@@ -1,0 +1,1298 @@
+substitutions:
+  brightness_limit: '1.0'
+  
+esphome:
+  name: localdeck
+  friendly_name: LocalDeck
+  min_version: 2026.8.2
+  project:
+    name: MichaelMKKelly.LocalDeckPlus
+    version: 1.0.0
+  name_add_mac_suffix: true
+  platformio_options:
+    board_build.flash_mode: dio
+  on_boot:
+    - light.turn_on:
+        id: ledstrip
+        brightness: 50%
+        effect: Addressable Rainbow
+    - delay: 5s
+    - light.turn_off:
+        id: ledstrip
+
+esp32:
+  variant: esp32c3
+  flash_size: 4MB
+  framework:
+    type: esp-idf
+
+logger:
+
+dashboard_import:
+  package_import_url: github://MichaelMKKelly/LocalDeck-Plus/localdeck-plus.yml@main
+
+api:
+  actions:
+    - action: firmwarereinstall
+      then:
+        - update.perform: 
+            id: firmwareupdate
+            force_update: true
+    - action: stockfirmwareinstall
+      then:
+        - update.perform: 
+            id: stockfirmware
+            force_update: true
+
+ota:
+  - platform: esphome
+  - platform: http_request
+
+http_request:
+
+update:
+  - platform: http_request
+    name: "LocalDeck-Plus"
+    id: firmwareupdate
+    source: https://michaelmkkelly.github.io/LocalDeck-Plus/esphome-updates/update-manifest.json
+  - platform: http_request
+    name: "LocalDeck-Stock-Firmware"
+    id: stockfirmware
+    source: https://michaelmkkelly.github.io/LocalDeck-Plus/esphome-updates/stock-manifest.json
+    internal: true
+
+wifi:
+  ap:
+
+network:
+  enable_ipv6: true
+
+esp32_improv:
+  authorizer: none
+
+improv_serial:  
+
+time:
+  - platform: homeassistant
+    id: homeassistant_time
+
+captive_portal:
+
+esp32_ble_tracker:
+  scan_parameters:
+    active: true
+
+bluetooth_proxy:
+  active: true
+
+button:
+  - platform: restart
+    name: "Restart"
+    id: Restart
+    entity_category: config
+    disabled_by_default: true
+  - platform: factory_reset
+    name: "Factory Reset"
+    id: Reset
+    entity_category: config
+    disabled_by_default: true
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: "IP Address"
+      id: ip_address
+      entity_category: diagnostic
+      disabled_by_default: true
+    ssid:
+      name: "Connected SSID"
+      id: ssid
+      entity_category: diagnostic
+      disabled_by_default: true
+    mac_address:
+      name: "Mac Address"
+      id: mac_address
+      entity_category: diagnostic
+      disabled_by_default: true
+
+light:
+  - platform: esp32_rmt_led_strip
+    name: All LEDs
+    id: ledstrip
+    internal: true
+    channel_colors: GRB
+    pin: GPIO8
+    num_leds: 24
+    chipset: SK6812
+    restore_mode: RESTORE_AND_OFF
+    default_transition_length: 0s
+    effects:
+      - addressable_rainbow:
+          name: Addressable Rainbow
+    # Global brightness cap: limits every channel to 50% (set via the
+    # brightness_limit substitution). This is the intended way to
+    # cap an addressable strip's max output and applies to all operations
+    # (turn_on, addressable_set, effects, ...).
+    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
+    
+  # One partition light per LED so Home Assistant can control each LED
+  # individually. The strip is wired starting at the bottom row, so the
+  # numbering follows the physical layout: LED 01 = R1C1 (strip index 18)
+  # ... LED 24 = R4C6 (strip index 5).
+  # The main "All LEDs" light above is kept for whole-strip control and
+  # effects. Each partition light carries the same 50% brightness cap
+  # (color_correct) as the main strip so per-LED control is also limited.
+  # Each partition light selects a single LED from the addressable strip via
+  # the `segments` list: `id` = source light, `from`/`to` = inclusive indices.
+  - platform: partition
+    name: "LED 01 R1C1"
+    id: led_01
+    segments:
+      - id: ledstrip
+        from: 18
+        to: 18
+    effects:
+      - pulse: {}
+      - pulse:
+          name: Fast Pulse
+          transition_length: 0.5s
+          update_interval: 0.5s
+          min_brightness: 0
+          max_brightness: 1
+      - pulse:
+          name: Slow Pulse
+          update_interval: 2s
+    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
+  - platform: partition
+    name: "LED 02 R1C2"
+    id: led_02
+    segments:
+      - id: ledstrip
+        from: 19
+        to: 19
+    effects:
+      - pulse: {}
+      - pulse:
+          name: Fast Pulse
+          transition_length: 0.5s
+          update_interval: 0.5s
+          min_brightness: 0
+          max_brightness: 1
+      - pulse:
+          name: Slow Pulse
+          update_interval: 2s
+    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
+  - platform: partition
+    name: "LED 03 R1C3"
+    id: led_03
+    segments:
+      - id: ledstrip
+        from: 20
+        to: 20
+    effects:
+      - pulse: {}
+      - pulse:
+          name: Fast Pulse
+          transition_length: 0.5s
+          update_interval: 0.5s
+          min_brightness: 0
+          max_brightness: 1
+      - pulse:
+          name: Slow Pulse
+          update_interval: 2s
+    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
+  - platform: partition
+    name: "LED 04 R1C4"
+    id: led_04
+    segments:
+      - id: ledstrip
+        from: 21
+        to: 21
+    effects:
+      - pulse: {}
+      - pulse:
+          name: Fast Pulse
+          transition_length: 0.5s
+          update_interval: 0.5s
+          min_brightness: 0
+          max_brightness: 1
+      - pulse:
+          name: Slow Pulse
+          update_interval: 2s
+    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
+  - platform: partition
+    name: "LED 05 R1C5"
+    id: led_05
+    segments:
+      - id: ledstrip
+        from: 22
+        to: 22
+    effects:
+      - pulse: {}
+      - pulse:
+          name: Fast Pulse
+          transition_length: 0.5s
+          update_interval: 0.5s
+          min_brightness: 0
+          max_brightness: 1
+      - pulse:
+          name: Slow Pulse
+          update_interval: 2s
+    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
+  - platform: partition
+    name: "LED 06 R1C6"
+    id: led_06
+    segments:
+      - id: ledstrip
+        from: 23
+        to: 23
+    effects:
+      - pulse: {}
+      - pulse:
+          name: Fast Pulse
+          transition_length: 0.5s
+          update_interval: 0.5s
+          min_brightness: 0
+          max_brightness: 1
+      - pulse:
+          name: Slow Pulse
+          update_interval: 2s
+    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
+  - platform: partition
+    name: "LED 07 R2C1"
+    id: led_07
+    segments:
+      - id: ledstrip
+        from: 12
+        to: 12
+    effects:
+      - pulse: {}
+      - pulse:
+          name: Fast Pulse
+          transition_length: 0.5s
+          update_interval: 0.5s
+          min_brightness: 0
+          max_brightness: 1
+      - pulse:
+          name: Slow Pulse
+          update_interval: 2s
+    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
+  - platform: partition
+    name: "LED 08 R2C2"
+    id: led_08
+    segments:
+      - id: ledstrip
+        from: 13
+        to: 13
+    effects:
+      - pulse: {}
+      - pulse:
+          name: Fast Pulse
+          transition_length: 0.5s
+          update_interval: 0.5s
+          min_brightness: 0
+          max_brightness: 1
+      - pulse:
+          name: Slow Pulse
+          update_interval: 2s
+    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
+  - platform: partition
+    name: "LED 09 R2C3"
+    id: led_09
+    segments:
+      - id: ledstrip
+        from: 14
+        to: 14
+    effects:
+      - pulse: {}
+      - pulse:
+          name: Fast Pulse
+          transition_length: 0.5s
+          update_interval: 0.5s
+          min_brightness: 0
+          max_brightness: 1
+      - pulse:
+          name: Slow Pulse
+          update_interval: 2s
+    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
+  - platform: partition
+    name: "LED 10 R2C4"
+    id: led_10
+    segments:
+      - id: ledstrip
+        from: 15
+        to: 15
+    effects:
+      - pulse: {}
+      - pulse:
+          name: Fast Pulse
+          transition_length: 0.5s
+          update_interval: 0.5s
+          min_brightness: 0
+          max_brightness: 1
+      - pulse:
+          name: Slow Pulse
+          update_interval: 2s
+    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
+  - platform: partition
+    name: "LED 11 R2C5"
+    id: led_11
+    segments:
+      - id: ledstrip
+        from: 16
+        to: 16
+    effects:
+      - pulse: {}
+      - pulse:
+          name: Fast Pulse
+          transition_length: 0.5s
+          update_interval: 0.5s
+          min_brightness: 0
+          max_brightness: 1
+      - pulse:
+          name: Slow Pulse
+          update_interval: 2s
+    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
+  - platform: partition
+    name: "LED 12 R2C6"
+    id: led_12
+    segments:
+      - id: ledstrip
+        from: 17
+        to: 17
+    effects:
+      - pulse: {}
+      - pulse:
+          name: Fast Pulse
+          transition_length: 0.5s
+          update_interval: 0.5s
+          min_brightness: 0
+          max_brightness: 1
+      - pulse:
+          name: Slow Pulse
+          update_interval: 2s
+    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
+  - platform: partition
+    name: "LED 13 R3C1"
+    id: led_13
+    segments:
+      - id: ledstrip
+        from: 6
+        to: 6
+    effects:
+      - pulse: {}
+      - pulse:
+          name: Fast Pulse
+          transition_length: 0.5s
+          update_interval: 0.5s
+          min_brightness: 0
+          max_brightness: 1
+      - pulse:
+          name: Slow Pulse
+          update_interval: 2s
+    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
+  - platform: partition
+    name: "LED 14 R3C2"
+    id: led_14
+    segments:
+      - id: ledstrip
+        from: 7
+        to: 7
+    effects:
+      - pulse: {}
+      - pulse:
+          name: Fast Pulse
+          transition_length: 0.5s
+          update_interval: 0.5s
+          min_brightness: 0
+          max_brightness: 1
+      - pulse:
+          name: Slow Pulse
+          update_interval: 2s
+    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
+  - platform: partition
+    name: "LED 15 R3C3"
+    id: led_15
+    segments:
+      - id: ledstrip
+        from: 8
+        to: 8
+    effects:
+      - pulse: {}
+      - pulse:
+          name: Fast Pulse
+          transition_length: 0.5s
+          update_interval: 0.5s
+          min_brightness: 0
+          max_brightness: 1
+      - pulse:
+          name: Slow Pulse
+          update_interval: 2s
+    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
+  - platform: partition
+    name: "LED 16 R3C4"
+    id: led_16
+    segments:
+      - id: ledstrip
+        from: 9
+        to: 9
+    effects:
+      - pulse: {}
+      - pulse:
+          name: Fast Pulse
+          transition_length: 0.5s
+          update_interval: 0.5s
+          min_brightness: 0
+          max_brightness: 1
+      - pulse:
+          name: Slow Pulse
+          update_interval: 2s
+    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
+  - platform: partition
+    name: "LED 17 R3C5"
+    id: led_17
+    segments:
+      - id: ledstrip
+        from: 10
+        to: 10
+    effects:
+      - pulse: {}
+      - pulse:
+          name: Fast Pulse
+          transition_length: 0.5s
+          update_interval: 0.5s
+          min_brightness: 0
+          max_brightness: 1
+      - pulse:
+          name: Slow Pulse
+          update_interval: 2s
+    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
+  - platform: partition
+    name: "LED 18 R3C6"
+    id: led_18
+    segments:
+      - id: ledstrip
+        from: 11
+        to: 11
+    effects:
+      - pulse: {}
+      - pulse:
+          name: Fast Pulse
+          transition_length: 0.5s
+          update_interval: 0.5s
+          min_brightness: 0
+          max_brightness: 1
+      - pulse:
+          name: Slow Pulse
+          update_interval: 2s
+    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
+  - platform: partition
+    name: "LED 19 R4C1"
+    id: led_19
+    segments:
+      - id: ledstrip
+        from: 0
+        to: 0
+    effects:
+      - pulse: {}
+      - pulse:
+          name: Fast Pulse
+          transition_length: 0.5s
+          update_interval: 0.5s
+          min_brightness: 0
+          max_brightness: 1
+      - pulse:
+          name: Slow Pulse
+          update_interval: 2s
+    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
+  - platform: partition
+    name: "LED 20 R4C2"
+    id: led_20
+    segments:
+      - id: ledstrip
+        from: 1
+        to: 1
+    effects:
+      - pulse: {}
+      - pulse:
+          name: Fast Pulse
+          transition_length: 0.5s
+          update_interval: 0.5s
+          min_brightness: 0
+          max_brightness: 1
+      - pulse:
+          name: Slow Pulse
+          update_interval: 2s
+    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
+  - platform: partition
+    name: "LED 21 R4C3"
+    id: led_21
+    segments:
+      - id: ledstrip
+        from: 2
+        to: 2
+    effects:
+      - pulse: {}
+      - pulse:
+          name: Fast Pulse
+          transition_length: 0.5s
+          update_interval: 0.5s
+          min_brightness: 0
+          max_brightness: 1
+      - pulse:
+          name: Slow Pulse
+          update_interval: 2s
+    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
+  - platform: partition
+    name: "LED 22 R4C4"
+    id: led_22
+    segments:
+      - id: ledstrip
+        from: 3
+        to: 3
+    effects:
+      - pulse: {}
+      - pulse:
+          name: Fast Pulse
+          transition_length: 0.5s
+          update_interval: 0.5s
+          min_brightness: 0
+          max_brightness: 1
+      - pulse:
+          name: Slow Pulse
+          update_interval: 2s
+    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
+  - platform: partition
+    name: "LED 23 R4C5"
+    id: led_23
+    segments:
+      - id: ledstrip
+        from: 4
+        to: 4
+    effects:
+      - pulse: {}
+      - pulse:
+          name: Fast Pulse
+          transition_length: 0.5s
+          update_interval: 0.5s
+          min_brightness: 0
+          max_brightness: 1
+      - pulse:
+          name: Slow Pulse
+          update_interval: 2s
+    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
+  - platform: partition
+    name: "LED 24 R4C6"
+    id: led_24
+    segments:
+      - id: ledstrip
+        from: 5
+        to: 5
+    effects:
+      - pulse: {}
+      - pulse:
+          name: Fast Pulse
+          transition_length: 0.5s
+          update_interval: 0.5s
+          min_brightness: 0
+          max_brightness: 1
+      - pulse:
+          name: Slow Pulse
+          update_interval: 2s
+    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
+matrix_keypad:
+  id: keypad
+  keys: ABCDEFGHIJKLMNOPQRSTUVWX
+  rows:
+    - pin: GPIO21
+    - pin: GPIO20
+    - pin: GPIO3
+    - pin: GPIO7
+  columns:
+    - pin:
+        number: GPIO0
+        drive_strength: 5mA
+    - pin:
+        number: GPIO1
+        drive_strength: 5mA
+    - pin:
+        number: GPIO10
+        drive_strength: 5mA
+    - pin:
+        number: GPIO4
+        drive_strength: 5mA
+    - pin:
+        number: GPIO5
+        drive_strength: 5mA
+    - pin:
+        number: GPIO6
+        drive_strength: 5mA
+
+# ---------------------------------------------------------------------------
+# One template event per button. Each button exposes four event types
+# (single / double / triple / long) fired from the binary_sensor
+# on_multi_click handlers below. Home Assistant receives these as event
+# entities and can trigger automations on a specific event_type to control
+# the matching "LED NN" light. Buttons no longer drive the LEDs directly --
+# all LED control happens in Home Assistant.
+# ---------------------------------------------------------------------------
+event:
+  - platform: template
+    name: "Button 01 R1C1"
+    id: event_01
+    device_class: button
+    event_types: [single, double, triple, long]
+  - platform: template
+    name: "Button 02 R1C2"
+    id: event_02
+    device_class: button
+    event_types: [single, double, triple, long]
+  - platform: template
+    name: "Button 03 R1C3"
+    id: event_03
+    device_class: button
+    event_types: [single, double, triple, long]
+  - platform: template
+    name: "Button 04 R1C4"
+    id: event_04
+    device_class: button
+    event_types: [single, double, triple, long]
+  - platform: template
+    name: "Button 05 R1C5"
+    id: event_05
+    device_class: button
+    event_types: [single, double, triple, long]
+  - platform: template
+    name: "Button 06 R1C6"
+    id: event_06
+    device_class: button
+    event_types: [single, double, triple, long]
+  - platform: template
+    name: "Button 07 R2C1"
+    id: event_07
+    device_class: button
+    event_types: [single, double, triple, long]
+  - platform: template
+    name: "Button 08 R2C2"
+    id: event_08
+    device_class: button
+    event_types: [single, double, triple, long]
+  - platform: template
+    name: "Button 09 R2C3"
+    id: event_09
+    device_class: button
+    event_types: [single, double, triple, long]
+  - platform: template
+    name: "Button 10 R2C4"
+    id: event_10
+    device_class: button
+    event_types: [single, double, triple, long]
+  - platform: template
+    name: "Button 11 R2C5"
+    id: event_11
+    device_class: button
+    event_types: [single, double, triple, long]
+  - platform: template
+    name: "Button 12 R2C6"
+    id: event_12
+    device_class: button
+    event_types: [single, double, triple, long]
+  - platform: template
+    name: "Button 13 R3C1"
+    id: event_13
+    device_class: button
+    event_types: [single, double, triple, long]
+  - platform: template
+    name: "Button 14 R3C2"
+    id: event_14
+    device_class: button
+    event_types: [single, double, triple, long]
+  - platform: template
+    name: "Button 15 R3C3"
+    id: event_15
+    device_class: button
+    event_types: [single, double, triple, long]
+  - platform: template
+    name: "Button 16 R3C4"
+    id: event_16
+    device_class: button
+    event_types: [single, double, triple, long]
+  - platform: template
+    name: "Button 17 R3C5"
+    id: event_17
+    device_class: button
+    event_types: [single, double, triple, long]
+  - platform: template
+    name: "Button 18 R3C6"
+    id: event_18
+    device_class: button
+    event_types: [single, double, triple, long]
+  - platform: template
+    name: "Button 19 R4C1"
+    id: event_19
+    device_class: button
+    event_types: [single, double, triple, long]
+  - platform: template
+    name: "Button 20 R4C2"
+    id: event_20
+    device_class: button
+    event_types: [single, double, triple, long]
+  - platform: template
+    name: "Button 21 R4C3"
+    id: event_21
+    device_class: button
+    event_types: [single, double, triple, long]
+  - platform: template
+    name: "Button 22 R4C4"
+    id: event_22
+    device_class: button
+    event_types: [single, double, triple, long]
+  - platform: template
+    name: "Button 23 R4C5"
+    id: event_23
+    device_class: button
+    event_types: [single, double, triple, long]
+  - platform: template
+    name: "Button 24 R4C6"
+    id: event_24
+    device_class: button
+    event_types: [single, double, triple, long]
+
+# ---------------------------------------------------------------------------
+# One binary sensor per physical key. Buttons are numbered by physical
+# position (Button 01 = R1C1 ... Button 24 = R4C6). Because the rows are
+# wired upside down, the matrix key letters are S..X for row 1, M..R for
+# row 2, G..L for row 3 and A..F for row 4. Each sensor detects four press
+# patterns via on_multi_click and fires the matching event on its template
+# event entity (event_01 ... event_24). The 20ms debounce filter is
+# recommended for on_multi_click with mechanical switches.
+# ---------------------------------------------------------------------------
+binary_sensor:
+  - platform: matrix_keypad
+    keypad_id: keypad
+    key: S
+    name: "Button 01 R1C1"
+    id: key_01
+    disabled_by_default: true
+    internal: true
+    filters:
+      - delayed_on_off: 20ms
+    on_multi_click:
+      - timing: ["ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_01, event_type: single}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_01, event_type: double}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_01, event_type: triple}
+      - timing: ["ON for at least 1s"]
+        then:
+          - event.trigger: {id: event_01, event_type: long}
+  - platform: matrix_keypad
+    keypad_id: keypad
+    key: T
+    name: "Button 02 R1C2"
+    id: key_02
+    disabled_by_default: true
+    internal: true
+    filters:
+      - delayed_on_off: 20ms
+    on_multi_click:
+      - timing: ["ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_02, event_type: single}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_02, event_type: double}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_02, event_type: triple}
+      - timing: ["ON for at least 1s"]
+        then:
+          - event.trigger: {id: event_02, event_type: long}
+  - platform: matrix_keypad
+    keypad_id: keypad
+    key: U
+    name: "Button 03 R1C3"
+    id: key_03
+    disabled_by_default: true
+    internal: true
+    filters:
+      - delayed_on_off: 20ms
+    on_multi_click:
+      - timing: ["ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_03, event_type: single}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_03, event_type: double}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_03, event_type: triple}
+      - timing: ["ON for at least 1s"]
+        then:
+          - event.trigger: {id: event_03, event_type: long}
+  - platform: matrix_keypad
+    keypad_id: keypad
+    key: V
+    name: "Button 04 R1C4"
+    id: key_04
+    disabled_by_default: true
+    internal: true
+    filters:
+      - delayed_on_off: 20ms
+    on_multi_click:
+      - timing: ["ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_04, event_type: single}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_04, event_type: double}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_04, event_type: triple}
+      - timing: ["ON for at least 1s"]
+        then:
+          - event.trigger: {id: event_04, event_type: long}
+  - platform: matrix_keypad
+    keypad_id: keypad
+    key: W
+    name: "Button 05 R1C5"
+    id: key_05
+    disabled_by_default: true
+    internal: true
+    filters:
+      - delayed_on_off: 20ms
+    on_multi_click:
+      - timing: ["ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_05, event_type: single}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_05, event_type: double}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_05, event_type: triple}
+      - timing: ["ON for at least 1s"]
+        then:
+          - event.trigger: {id: event_05, event_type: long}
+  - platform: matrix_keypad
+    keypad_id: keypad
+    key: X
+    name: "Button 06 R1C6"
+    id: key_06
+    disabled_by_default: true
+    internal: true
+    filters:
+      - delayed_on_off: 20ms
+    on_multi_click:
+      - timing: ["ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_06, event_type: single}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_06, event_type: double}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_06, event_type: triple}
+      - timing: ["ON for at least 1s"]
+        then:
+          - event.trigger: {id: event_06, event_type: long}
+  - platform: matrix_keypad
+    keypad_id: keypad
+    key: M
+    name: "Button 07 R2C1"
+    id: key_07
+    disabled_by_default: true
+    internal: true
+    filters:
+      - delayed_on_off: 20ms
+    on_multi_click:
+      - timing: ["ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_07, event_type: single}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_07, event_type: double}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_07, event_type: triple}
+      - timing: ["ON for at least 1s"]
+        then:
+          - event.trigger: {id: event_07, event_type: long}
+  - platform: matrix_keypad
+    keypad_id: keypad
+    key: N
+    name: "Button 08 R2C2"
+    id: key_08
+    disabled_by_default: true
+    internal: true
+    filters:
+      - delayed_on_off: 20ms
+    on_multi_click:
+      - timing: ["ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_08, event_type: single}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_08, event_type: double}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_08, event_type: triple}
+      - timing: ["ON for at least 1s"]
+        then:
+          - event.trigger: {id: event_08, event_type: long}
+  - platform: matrix_keypad
+    keypad_id: keypad
+    key: O
+    name: "Button 09 R2C3"
+    id: key_09
+    disabled_by_default: true
+    internal: true
+    filters:
+      - delayed_on_off: 20ms
+    on_multi_click:
+      - timing: ["ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_09, event_type: single}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_09, event_type: double}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_09, event_type: triple}
+      - timing: ["ON for at least 1s"]
+        then:
+          - event.trigger: {id: event_09, event_type: long}
+  - platform: matrix_keypad
+    keypad_id: keypad
+    key: P
+    name: "Button 10 R2C4"
+    id: key_10
+    disabled_by_default: true
+    internal: true
+    filters:
+      - delayed_on_off: 20ms
+    on_multi_click:
+      - timing: ["ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_10, event_type: single}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_10, event_type: double}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_10, event_type: triple}
+      - timing: ["ON for at least 1s"]
+        then:
+          - event.trigger: {id: event_10, event_type: long}
+  - platform: matrix_keypad
+    keypad_id: keypad
+    key: Q
+    name: "Button 11 R2C5"
+    id: key_11
+    disabled_by_default: true
+    internal: true
+    filters:
+      - delayed_on_off: 20ms
+    on_multi_click:
+      - timing: ["ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_11, event_type: single}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_11, event_type: double}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_11, event_type: triple}
+      - timing: ["ON for at least 1s"]
+        then:
+          - event.trigger: {id: event_11, event_type: long}
+  - platform: matrix_keypad
+    keypad_id: keypad
+    key: R
+    name: "Button 12 R2C6"
+    id: key_12
+    disabled_by_default: true
+    internal: true
+    filters:
+      - delayed_on_off: 20ms
+    on_multi_click:
+      - timing: ["ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_12, event_type: single}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_12, event_type: double}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_12, event_type: triple}
+      - timing: ["ON for at least 1s"]
+        then:
+          - event.trigger: {id: event_12, event_type: long}
+  - platform: matrix_keypad
+    keypad_id: keypad
+    key: G
+    name: "Button 13 R3C1"
+    id: key_13
+    disabled_by_default: true
+    internal: true
+    filters:
+      - delayed_on_off: 20ms
+    on_multi_click:
+      - timing: ["ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_13, event_type: single}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_13, event_type: double}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_13, event_type: triple}
+      - timing: ["ON for at least 1s"]
+        then:
+          - event.trigger: {id: event_13, event_type: long}
+  - platform: matrix_keypad
+    keypad_id: keypad
+    key: H
+    name: "Button 14 R3C2"
+    id: key_14
+    disabled_by_default: true
+    internal: true
+    filters:
+      - delayed_on_off: 20ms
+    on_multi_click:
+      - timing: ["ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_14, event_type: single}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_14, event_type: double}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_14, event_type: triple}
+      - timing: ["ON for at least 1s"]
+        then:
+          - event.trigger: {id: event_14, event_type: long}
+  - platform: matrix_keypad
+    keypad_id: keypad
+    key: I
+    name: "Button 15 R3C3"
+    id: key_15
+    disabled_by_default: true
+    internal: true
+    filters:
+      - delayed_on_off: 20ms
+    on_multi_click:
+      - timing: ["ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_15, event_type: single}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_15, event_type: double}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_15, event_type: triple}
+      - timing: ["ON for at least 1s"]
+        then:
+          - event.trigger: {id: event_15, event_type: long}
+  - platform: matrix_keypad
+    keypad_id: keypad
+    key: J
+    name: "Button 16 R3C4"
+    id: key_16
+    disabled_by_default: true
+    internal: true
+    filters:
+      - delayed_on_off: 20ms
+    on_multi_click:
+      - timing: ["ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_16, event_type: single}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_16, event_type: double}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_16, event_type: triple}
+      - timing: ["ON for at least 1s"]
+        then:
+          - event.trigger: {id: event_16, event_type: long}
+  - platform: matrix_keypad
+    keypad_id: keypad
+    key: K
+    name: "Button 17 R3C5"
+    id: key_17
+    disabled_by_default: true
+    internal: true
+    filters:
+      - delayed_on_off: 20ms
+    on_multi_click:
+      - timing: ["ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_17, event_type: single}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_17, event_type: double}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_17, event_type: triple}
+      - timing: ["ON for at least 1s"]
+        then:
+          - event.trigger: {id: event_17, event_type: long}
+  - platform: matrix_keypad
+    keypad_id: keypad
+    key: L
+    name: "Button 18 R3C6"
+    id: key_18
+    disabled_by_default: true
+    internal: true
+    filters:
+      - delayed_on_off: 20ms
+    on_multi_click:
+      - timing: ["ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_18, event_type: single}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_18, event_type: double}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_18, event_type: triple}
+      - timing: ["ON for at least 1s"]
+        then:
+          - event.trigger: {id: event_18, event_type: long}
+  - platform: matrix_keypad
+    keypad_id: keypad
+    key: A
+    name: "Button 19 R4C1"
+    id: key_19
+    disabled_by_default: true
+    internal: true
+    filters:
+      - delayed_on_off: 20ms
+    on_multi_click:
+      - timing: ["ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_19, event_type: single}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_19, event_type: double}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_19, event_type: triple}
+      - timing: ["ON for at least 1s"]
+        then:
+          - event.trigger: {id: event_19, event_type: long}
+  - platform: matrix_keypad
+    keypad_id: keypad
+    key: B
+    name: "Button 20 R4C2"
+    id: key_20
+    disabled_by_default: true
+    internal: true
+    filters:
+      - delayed_on_off: 20ms
+    on_multi_click:
+      - timing: ["ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_20, event_type: single}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_20, event_type: double}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_20, event_type: triple}
+      - timing: ["ON for at least 1s"]
+        then:
+          - event.trigger: {id: event_20, event_type: long}
+  - platform: matrix_keypad
+    keypad_id: keypad
+    key: C
+    name: "Button 21 R4C3"
+    id: key_21
+    disabled_by_default: true
+    internal: true
+    filters:
+      - delayed_on_off: 20ms
+    on_multi_click:
+      - timing: ["ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_21, event_type: single}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_21, event_type: double}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_21, event_type: triple}
+      - timing: ["ON for at least 1s"]
+        then:
+          - event.trigger: {id: event_21, event_type: long}
+  - platform: matrix_keypad
+    keypad_id: keypad
+    key: D
+    name: "Button 22 R4C4"
+    id: key_22
+    disabled_by_default: true
+    internal: true
+    filters:
+      - delayed_on_off: 20ms
+    on_multi_click:
+      - timing: ["ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_22, event_type: single}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_22, event_type: double}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_22, event_type: triple}
+      - timing: ["ON for at least 1s"]
+        then:
+          - event.trigger: {id: event_22, event_type: long}
+  - platform: matrix_keypad
+    keypad_id: keypad
+    key: E
+    name: "Button 23 R4C5"
+    id: key_23
+    disabled_by_default: true
+    internal: true
+    filters:
+      - delayed_on_off: 20ms
+    on_multi_click:
+      - timing: ["ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_23, event_type: single}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_23, event_type: double}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_23, event_type: triple}
+      - timing: ["ON for at least 1s"]
+        then:
+          - event.trigger: {id: event_23, event_type: long}
+  - platform: matrix_keypad
+    keypad_id: keypad
+    key: F
+    name: "Button 24 R4C6"
+    id: key_24
+    disabled_by_default: true
+    internal: true
+    filters:
+      - delayed_on_off: 20ms
+    on_multi_click:
+      - timing: ["ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_24, event_type: single}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_24, event_type: double}
+      - timing: ["ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at most 0.5s", "ON for at most 0.5s", "OFF for at least 0.2s"]
+        then:
+          - event.trigger: {id: event_24, event_type: triple}
+      - timing: ["ON for at least 1s"]
+        then:
+          - event.trigger: {id: event_24, event_type: long}

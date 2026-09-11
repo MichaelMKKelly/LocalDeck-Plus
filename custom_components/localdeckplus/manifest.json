@@ -1,0 +1,11 @@
+{
+  "domain": "localdeckplus",
+  "name": "LocalDeck-Plus",
+  "version": "1.0.0",
+  "codeowners": ["@MichaelMKKelly"],
+  "config_flow": true,
+  "documentation": "https://github.com/MichaelMKKelly/LocalDeck-Plus",
+  "issue_tracker": "https://github.com/MichaelMKKelly/LocalDeck-Plus/issues",
+  "iot_class": "local_push",
+  "requirements": []
+}

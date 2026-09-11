@@ -49,6 +49,8 @@ ota:
   - platform: http_request
 
 http_request:
+  buffer_size_rx: 1024
+  buffer_size_tx: 1024
 
 update:
   - platform: http_request

@@ -5,10 +5,10 @@
     {
       "chipFamily": "ESP32-C3",
       "ota": {
-        "md5": "1234567890abcdef1234567890abcdef",
-        "path": "http://example.com/firmware.bin",
-        "release_url": "https://github.com/MichaelMKKelly/LocalDeck-Plus/releases/XXXX",
-        "summary": "Example Update - For Testing (Built on ESPHome 2026.8.2)"
+        "md5": "6fc7acb8b467f59ea2a0357299830d0e",
+        "path": "https://github.com/MichaelMKKelly/LocalDeck-Plus/releases/download/0.0.1/localdeck-firmware.ota.bin",
+        "release_url": "https://github.com/MichaelMKKelly/LocalDeck-Plus/releases/tag/0.0.1",
+        "summary": "Testing Update - For Testing Only (Built on ESPHome 2026.8.2)"
       }
     }
   ]

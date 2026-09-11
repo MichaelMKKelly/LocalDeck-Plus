@@ -11,6 +11,8 @@ from homeassistant.const import STATE_OFF, STATE_ON, STATE_UNAVAILABLE, STATE_UN
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.condition import (
+    ATTR_BEHAVIOR,
+    BEHAVIOR_ANY,
     async_extract_entities,
     async_from_config,
 )
@@ -297,12 +299,15 @@ def _condition_to_config(condition) -> dict:
 
 
 def _normalize_condition(config):
-    """Recursively convert 'for' duration fields to timedeltas.
+    """Recursively normalize a condition config for ``async_from_config``.
 
-    The condition editor may store 'for' as a string (e.g. '00:00:05') or
-    a number, but the condition checker expects a timedelta for duration
-    math (it does ``dt_util.utcnow() - duration``). Convert it so the
-    checker works correctly.
+    - Convert ``for`` duration fields (stored as strings/numbers by the
+      condition editor) to ``timedelta`` for duration math.
+    - Ensure non-composite conditions carry the ``behavior`` option.
+      ``async_from_config`` does NOT run the condition schema, so the
+      schema's ``behavior`` default (``"any"``) is never applied; the
+      ``EntityConditionBase`` constructor reads ``options["behavior"]``
+      directly and raises ``KeyError``/``TypeError`` when it is absent.
     """
     if isinstance(config, dict):
         result = {}
@@ -321,6 +326,17 @@ def _normalize_condition(config):
                     )
                     value = None
             result[key] = _normalize_condition(value)
+        condition = result.get("condition")
+        if isinstance(condition, str) and condition not in (
+            "and",
+            "or",
+            "not",
+        ):
+            options = result.get("options")
+            if not isinstance(options, dict):
+                options = {}
+                result["options"] = options
+            options.setdefault(ATTR_BEHAVIOR, BEHAVIOR_ANY)
         return result
     if isinstance(config, list):
         return [_normalize_condition(item) for item in config]

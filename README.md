@@ -99,7 +99,7 @@ It is recommended that, before you start, do the following:
 #### Option A - Add this repo to HACS as a custom repository
 - On the HACS page open the overflow menu in the top right
 - Select "Custom repositories"
-- Add this repo by its URL `https://github.com/MichaelMKKelly/LocalDeck-Plus`
+- Add this repo by its URL `https://github.com/MichaelMKKelly/LocalDeck-Plus` with a type of "Integration"
 - Install via the HACS UI
 - Restart Home Assistant
 

@@ -1,5 +1,3 @@
-# PRERELEASE WARNING - THIS IS STILL IN ACTIVE DEVELOPMENT AND SHOULD NOT BE USED YET
-
 # LocalDeck-Plus
 A Custom Firmware and Integration combination to unlock the potential of your [LocalDeck](https://www.mylocalbytes.com/products/localdeck-set).
 

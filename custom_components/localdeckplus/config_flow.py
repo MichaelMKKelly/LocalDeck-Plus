@@ -1,5 +1,7 @@
 """Config flow for the LocalDeck-Plus integration."""
 
+import json
+
 import voluptuous as vol
 
 from homeassistant.config_entries import ConfigFlow, OptionsFlow
@@ -16,12 +18,16 @@ from homeassistant.helpers.selector import (
     SelectSelector,
     SelectSelectorConfig,
     SelectSelectorMode,
+    TextSelector,
+    TextSelectorConfig,
+    TextSelectorType,
 )
 
 from .const import (
     CONF_ACTION,
     CONF_BRIGHTNESS_PCT,
     CONF_COLOR,
+    CONF_CONFIG,
     CONF_CONDITION,
     CONF_CONDITIONS,
     CONF_DEVICE_ID,
@@ -207,6 +213,7 @@ class LocalDeckPlusOptionsFlow(OptionsFlow):
 
             setattr(self, f"async_step_{step_id}", _button_step)
             menu_options[step_id] = button_names[number]
+        menu_options["advanced"] = "Advanced configuration options"
         menu_options["done"] = "Done"
         return self.async_show_menu(step_id="menu", menu_options=menu_options)
 
@@ -278,6 +285,75 @@ class LocalDeckPlusOptionsFlow(OptionsFlow):
             suggested,
         )
         return self.async_show_form(step_id=step_id, data_schema=schema)
+
+    # ------------------------------------------------------------------
+    # Advanced configuration options (import / export / clear)
+    # ------------------------------------------------------------------
+
+    async def async_step_advanced(self, user_input=None):
+        """Show the advanced configuration options menu."""
+        menu_options = {
+            "import_export": "Import / Export configuration",
+            "clear_configuration": "Clear configuration",
+            "return_to_main": "Return to main menu",
+        }
+        return self.async_show_menu(step_id="advanced", menu_options=menu_options)
+
+    async def async_step_import_export(self, user_input=None):
+        """Show the import/export form with the configuration text box.
+
+        The text box is pre-filled with the current configuration (button
+        actions and LED bindings, as JSON) so the user can copy it. Pasting
+        a configuration into the box and submitting imports it, replacing
+        the current button actions and LED bindings.
+        """
+        if user_input is not None:
+            raw = user_input.get(CONF_CONFIG) or ""
+            try:
+                config = json.loads(raw) if raw.strip() else {}
+            except (json.JSONDecodeError, ValueError):
+                return self.async_show_form(
+                    step_id="import_export",
+                    data_schema=self._config_text_schema(),
+                    errors={"base": "invalid_json"},
+                )
+            if not isinstance(config, dict):
+                return self.async_show_form(
+                    step_id="import_export",
+                    data_schema=self._config_text_schema(),
+                    errors={"base": "invalid_config"},
+                )
+            for key in (OPT_BUTTON_ACTIONS, OPT_LED_BINDINGS):
+                if key in config and not isinstance(config[key], dict):
+                    return self.async_show_form(
+                        step_id="import_export",
+                        data_schema=self._config_text_schema(),
+                        errors={"base": "invalid_config"},
+                    )
+            options = dict(self.config_entry.options)
+            if OPT_BUTTON_ACTIONS in config:
+                options[OPT_BUTTON_ACTIONS] = config[OPT_BUTTON_ACTIONS]
+            if OPT_LED_BINDINGS in config:
+                options[OPT_LED_BINDINGS] = config[OPT_LED_BINDINGS]
+            self.hass.config_entries.async_update_entry(
+                self.config_entry, options=options
+            )
+            return await self.async_step_menu()
+        schema = self.add_suggested_values_to_schema(
+            self._config_text_schema(),
+            {CONF_CONFIG: self._export_config_text()},
+        )
+        return self.async_show_form(step_id="import_export", data_schema=schema)
+
+    async def async_step_clear_configuration(self, user_input=None):
+        """Clear all button actions and LED bindings, then return to the menu."""
+        options = dict(self.config_entry.options)
+        options[OPT_BUTTON_ACTIONS] = {}
+        options[OPT_LED_BINDINGS] = {}
+        self.hass.config_entries.async_update_entry(
+            self.config_entry, options=options
+        )
+        return await self.async_step_menu()
 
     # ------------------------------------------------------------------
     # LED conditions (the LED paired with the pending button)
@@ -611,6 +687,36 @@ class LocalDeckPlusOptionsFlow(OptionsFlow):
             {
                 vol.Required(CONF_FOLLOW_LIGHT): EntitySelector(
                     EntitySelectorConfig(domain="light")
+                )
+            }
+        )
+
+    def _export_config_text(self) -> str:
+        """Return the current configuration as an indented JSON string.
+
+        Only the button actions and LED bindings are included — never the
+        device-identifying data — so the text can be copied to another
+        LocalDeck.
+        """
+        config = {
+            OPT_BUTTON_ACTIONS: dict(
+                self.config_entry.options.get(OPT_BUTTON_ACTIONS, {})
+            ),
+            OPT_LED_BINDINGS: dict(
+                self.config_entry.options.get(OPT_LED_BINDINGS, {})
+            ),
+        }
+        return json.dumps(config, indent=2)
+
+    def _config_text_schema(self) -> vol.Schema:
+        """Schema for the import/export configuration text box."""
+        return vol.Schema(
+            {
+                vol.Required(CONF_CONFIG): TextSelector(
+                    TextSelectorConfig(
+                        multiline=True,
+                        type=TextSelectorType.TEXT,
+                    )
                 )
             }
         )

@@ -20,6 +20,9 @@ SWITCH_DISABLE_LEDS = "Disable LEDs"
 # Button action keys
 CONF_ACTION = "action"
 
+# Import/export configuration text field
+CONF_CONFIG = "config"
+
 # LED binding condition-rule keys
 CONF_CONDITIONS = "conditions"
 CONF_CONDITION = "condition"

@@ -98,6 +98,21 @@
         "data": {
           "follow_light": "Light to follow"
         }
+      },
+      "advanced": {
+        "title": "Advanced configuration options",
+        "description": "Import or export the button actions and LED bindings, or clear the configuration."
+      },
+      "import_export": {
+        "title": "Import / Export configuration",
+        "description": "Copy the configuration to export it, or paste a configuration and submit to import it. Only the button actions and LED bindings are included, not the device identity, so it can be copied between LocalDecks.",
+        "data": {
+          "config": "Configuration"
+        },
+        "error": {
+          "invalid_json": "The configuration is not valid JSON.",
+          "invalid_config": "The configuration is not a valid LocalDeck configuration."
+        }
       }
     }
   }

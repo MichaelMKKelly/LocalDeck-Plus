@@ -71,6 +71,8 @@ A few things about the stock setup were not to my liking:
     - Rules can be mixed so you can have a state based on a condition, and if that condition fails, it proceeds to following a light.
     - Invalid/Incomplete condition rules should be skipped whilst producing an error in the core log.
 - Disable LEDs Switch to darken your LocalDeck, which, when switched off, allows them to go right back to following their rules. NB: You can still manually turn lights on when this is on via the ESPHome integration.
+- Import / Export devices configuration as json.
+- Full device configuration clear.
 
 ## What are the advantages of this setup over the stock firmware?
 

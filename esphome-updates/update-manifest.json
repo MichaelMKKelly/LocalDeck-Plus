@@ -1,0 +1,15 @@
+{
+  "name": "LocalDeck-Plus",
+  "version": "1.0.0",
+  "builds": [
+    {
+      "chipFamily": "ESP32-C3",
+      "ota": {
+        "md5": "1234567890abcdef1234567890abcdef",
+        "path": "http://example.com/firmware.bin",
+        "release_url": "https://github.com/MichaelMKKelly/LocalDeck-Plus/releases/XXXX",
+        "summary": "Example Update - For Testing (Built on ESPHome 2026.8.2)"
+      }
+    }
+  ]
+}

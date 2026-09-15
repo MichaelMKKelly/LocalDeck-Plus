@@ -1,7 +1,7 @@
 {
   "domain": "localdeckplus",
   "name": "LocalDeck-Plus",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "codeowners": ["@MichaelMKKelly"],
   "config_flow": true,
   "documentation": "https://github.com/MichaelMKKelly/LocalDeck-Plus",

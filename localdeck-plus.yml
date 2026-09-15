@@ -1,13 +1,10 @@
-substitutions:
-  brightness_limit: '1.0'
-  
 esphome:
   name: localdeck
   friendly_name: LocalDeck
   min_version: 2026.8.2
   project:
     name: MichaelMKKelly.LocalDeckPlus
-    version: 1.0.0
+    version: 1.1.0
   name_add_mac_suffix: true
   platformio_options:
     board_build.flash_mode: dio
@@ -131,11 +128,6 @@ light:
     effects:
       - addressable_rainbow:
           name: Addressable Rainbow
-    # Global brightness cap: limits every channel to 50% (set via the
-    # brightness_limit substitution). This is the intended way to
-    # cap an addressable strip's max output and applies to all operations
-    # (turn_on, addressable_set, effects, ...).
-    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
     
   # One partition light per LED so Home Assistant can control each LED
   # individually. The strip is wired starting at the bottom row, so the
@@ -164,7 +156,6 @@ light:
       - pulse:
           name: Slow Pulse
           update_interval: 2s
-    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
   - platform: partition
     name: "LED 02 R1C2"
     id: led_02
@@ -183,7 +174,6 @@ light:
       - pulse:
           name: Slow Pulse
           update_interval: 2s
-    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
   - platform: partition
     name: "LED 03 R1C3"
     id: led_03
@@ -202,7 +192,6 @@ light:
       - pulse:
           name: Slow Pulse
           update_interval: 2s
-    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
   - platform: partition
     name: "LED 04 R1C4"
     id: led_04
@@ -221,7 +210,6 @@ light:
       - pulse:
           name: Slow Pulse
           update_interval: 2s
-    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
   - platform: partition
     name: "LED 05 R1C5"
     id: led_05
@@ -240,7 +228,6 @@ light:
       - pulse:
           name: Slow Pulse
           update_interval: 2s
-    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
   - platform: partition
     name: "LED 06 R1C6"
     id: led_06
@@ -259,7 +246,6 @@ light:
       - pulse:
           name: Slow Pulse
           update_interval: 2s
-    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
   - platform: partition
     name: "LED 07 R2C1"
     id: led_07
@@ -278,7 +264,6 @@ light:
       - pulse:
           name: Slow Pulse
           update_interval: 2s
-    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
   - platform: partition
     name: "LED 08 R2C2"
     id: led_08
@@ -297,7 +282,6 @@ light:
       - pulse:
           name: Slow Pulse
           update_interval: 2s
-    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
   - platform: partition
     name: "LED 09 R2C3"
     id: led_09
@@ -316,7 +300,6 @@ light:
       - pulse:
           name: Slow Pulse
           update_interval: 2s
-    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
   - platform: partition
     name: "LED 10 R2C4"
     id: led_10
@@ -335,7 +318,6 @@ light:
       - pulse:
           name: Slow Pulse
           update_interval: 2s
-    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
   - platform: partition
     name: "LED 11 R2C5"
     id: led_11
@@ -354,7 +336,6 @@ light:
       - pulse:
           name: Slow Pulse
           update_interval: 2s
-    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
   - platform: partition
     name: "LED 12 R2C6"
     id: led_12
@@ -373,7 +354,6 @@ light:
       - pulse:
           name: Slow Pulse
           update_interval: 2s
-    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
   - platform: partition
     name: "LED 13 R3C1"
     id: led_13
@@ -392,7 +372,6 @@ light:
       - pulse:
           name: Slow Pulse
           update_interval: 2s
-    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
   - platform: partition
     name: "LED 14 R3C2"
     id: led_14
@@ -411,7 +390,6 @@ light:
       - pulse:
           name: Slow Pulse
           update_interval: 2s
-    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
   - platform: partition
     name: "LED 15 R3C3"
     id: led_15
@@ -430,7 +408,6 @@ light:
       - pulse:
           name: Slow Pulse
           update_interval: 2s
-    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
   - platform: partition
     name: "LED 16 R3C4"
     id: led_16
@@ -449,7 +426,6 @@ light:
       - pulse:
           name: Slow Pulse
           update_interval: 2s
-    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
   - platform: partition
     name: "LED 17 R3C5"
     id: led_17
@@ -468,7 +444,6 @@ light:
       - pulse:
           name: Slow Pulse
           update_interval: 2s
-    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
   - platform: partition
     name: "LED 18 R3C6"
     id: led_18
@@ -487,7 +462,6 @@ light:
       - pulse:
           name: Slow Pulse
           update_interval: 2s
-    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
   - platform: partition
     name: "LED 19 R4C1"
     id: led_19
@@ -506,7 +480,6 @@ light:
       - pulse:
           name: Slow Pulse
           update_interval: 2s
-    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
   - platform: partition
     name: "LED 20 R4C2"
     id: led_20
@@ -525,7 +498,6 @@ light:
       - pulse:
           name: Slow Pulse
           update_interval: 2s
-    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
   - platform: partition
     name: "LED 21 R4C3"
     id: led_21
@@ -544,7 +516,6 @@ light:
       - pulse:
           name: Slow Pulse
           update_interval: 2s
-    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
   - platform: partition
     name: "LED 22 R4C4"
     id: led_22
@@ -563,7 +534,6 @@ light:
       - pulse:
           name: Slow Pulse
           update_interval: 2s
-    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
   - platform: partition
     name: "LED 23 R4C5"
     id: led_23
@@ -582,7 +552,6 @@ light:
       - pulse:
           name: Slow Pulse
           update_interval: 2s
-    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
   - platform: partition
     name: "LED 24 R4C6"
     id: led_24
@@ -601,7 +570,6 @@ light:
       - pulse:
           name: Slow Pulse
           update_interval: 2s
-    color_correct: [$brightness_limit, $brightness_limit, $brightness_limit]
 matrix_keypad:
   id: keypad
   keys: ABCDEFGHIJKLMNOPQRSTUVWX

@@ -24,6 +24,7 @@ from .const import (
     CONF_CONDITIONS,
     CONF_DEVICE_ID,
     CONF_FOLLOW_LIGHT,
+    DEFAULT_MASTER_BRIGHTNESS,
     EFFECT_NONE,
     OPT_BUTTON_ACTIONS,
     OPT_LED_BINDINGS,
@@ -34,6 +35,7 @@ from .light_state import (
     rule_enabled,
     rule_light_state,
     sanitize_light_state,
+    scale_light_state_brightness,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -41,19 +43,23 @@ _LOGGER = logging.getLogger(__name__)
 
 @dataclass
 class _LocalDeckPlusRuntime:
-    """Runtime state shared between the binding engine and the switch.
+    """Runtime state shared between the binding engine and the platforms.
 
     ``disabled`` gates the binding engine: while True the engine stops
     driving the LEDs so they stay off regardless of their rules.
     ``light_entity_ids`` is the full set of discovered LED lights, used to
     turn them all off when the switch is engaged. ``apply_all`` re-evaluates
-    every binding and is called when the switch is released so the LEDs
-    return to their rule-driven state.
+    every binding and is called when the switch is released (or the master
+    brightness changes) so the LEDs return to their rule-driven state.
+    ``master_brightness`` is the global 0-100 multiplier applied to every
+    rule's brightness; it is restored by the number platform before the
+    engine's first evaluation.
     """
 
     disabled: bool = False
     light_entity_ids: list[str] = field(default_factory=list)
     apply_all: Callable[[], Awaitable[None]] | None = None
+    master_brightness: float = DEFAULT_MASTER_BRIGHTNESS
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -367,6 +373,7 @@ async def _setup_binding_engine(
     unsubs = []
     checkers = []  # all ConditionCheckers, for cleanup
     apply_leds: list[Callable[[], Awaitable[None]]] = []
+    driven_light_entity_ids: set[str] = set()
 
     for led_key, binding in bindings.items():
         try:
@@ -442,9 +449,15 @@ async def _setup_binding_engine(
             when the LED state is evaluated.
 
             While the "Disable LEDs" switch is on (``runtime.disabled``)
-            the LED is left untouched so it stays off.
+            the LED is left untouched so it stays off. When the master
+            brightness is zero the LED is turned off; otherwise the rule's
+            brightness is scaled by the master brightness.
             """
             if runtime.disabled:
+                return
+            if runtime.master_brightness <= 0:
+                # Master brightness at zero: every LED is off.
+                await _set_light(hass, light_entity_id, None, False)
                 return
             for descriptor in led_rules:
                 rule = descriptor[2]
@@ -452,7 +465,10 @@ async def _setup_binding_engine(
                     continue
                 if descriptor[0] == "follow_light":
                     await _mirror_light(
-                        hass, light_entity_id, descriptor[1]
+                        hass,
+                        light_entity_id,
+                        descriptor[1],
+                        runtime.master_brightness,
                     )
                     return
                 checker = descriptor[1]
@@ -464,12 +480,11 @@ async def _setup_binding_engine(
                     )
                     continue
                 if matched:
-                    await _set_light(
-                        hass,
-                        light_entity_id,
+                    light_state = scale_light_state_brightness(
                         sanitize_light_state(rule_light_state(rule)),
-                        True,
+                        runtime.master_brightness,
                     )
+                    await _set_light(hass, light_entity_id, light_state, True)
                     return
             await _set_light(hass, light_entity_id, None, False)
 
@@ -495,11 +510,37 @@ async def _setup_binding_engine(
             _apply_led(), name=f"localdeckplus binding init {led_key}"
         )
         apply_leds.append(_apply_led)
+        driven_light_entity_ids.add(light_entity_id)
+
+    # Turn off any discovered LED that has no rules in the current config.
+    # These LEDs are not driven by the engine, so without this they would
+    # keep whatever state they were left in (e.g. remnants from a previous
+    # configuration after an import).
+    unbound_light_entity_ids = [
+        eid
+        for eid in lights.values()
+        if eid and eid not in driven_light_entity_ids
+    ]
+
+    async def _turn_off_unbound():
+        """Turn off every LED that has no rules in the current config."""
+        for eid in unbound_light_entity_ids:
+            await _set_light(hass, eid, None, False)
+
+    if unbound_light_entity_ids:
+        hass.async_create_task(
+            _turn_off_unbound(), name="localdeckplus turn off unbound leds"
+        )
 
     async def _apply_all():
-        """Re-evaluate every binding (called when the switch is released)."""
+        """Re-evaluate every binding and turn off any LED without rules.
+
+        Called when the switch is released or when the ESPHome device
+        (re)becomes available.
+        """
         for apply_led in apply_leds:
             await apply_led()
+        await _turn_off_unbound()
 
     runtime.apply_all = _apply_all
 
@@ -585,16 +626,20 @@ _COLOR_DESCRIPTOR_PRIORITY = (
 
 
 async def _mirror_light(
-    hass: HomeAssistant, led_entity_id: str, source_entity_id: str
+    hass: HomeAssistant,
+    led_entity_id: str,
+    source_entity_id: str,
+    master_brightness_pct: float,
 ) -> None:
     """Set a deck LED to mirror the state of a source light.
 
     When the source light is off, unavailable, or unknown the LED is turned
     off. Otherwise the LED is turned on with the source light's color and
-    brightness. Only a single color descriptor is sent (the light.turn_on
-    service rejects more than one), chosen in priority order from the
-    source's state attributes. Any active effect is cleared so the LED
-    always shows a static color while following the light.
+    brightness, scaled by the master brightness. Only a single color
+    descriptor is sent (the light.turn_on service rejects more than one),
+    chosen in priority order from the source's state attributes. Any active
+    effect is cleared so the LED always shows a static color while
+    following the light.
     """
     source = hass.states.get(source_entity_id)
     if (
@@ -614,6 +659,9 @@ async def _mirror_light(
         light_state["brightness"] = int(brightness)
     # Clear any active effect (same mechanism the condition rules use).
     light_state["effect"] = EFFECT_NONE
+    light_state = scale_light_state_brightness(
+        light_state, master_brightness_pct
+    )
     await _set_light(hass, led_entity_id, light_state, True)
 
 

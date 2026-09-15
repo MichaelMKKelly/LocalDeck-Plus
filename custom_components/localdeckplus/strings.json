@@ -57,6 +57,10 @@
           "action": "Action"
         }
       },
+      "move_configuration": {
+        "title": "Move configuration to another button",
+        "description": "Select the button to move this button's configuration to. This will overwrite any existing configuration on the target button, and the source button's configuration will be cleared."
+      },
       "led_conditions_menu": {
         "title": "LED conditions",
         "description": "Manage the rules for this LED. Rules are evaluated in priority order and the first active rule wins: a condition rule is active when its condition matches, and a follow light rule is always active and mirrors the selected light's state, color, and brightness. If no rule is active, the LED is turned off."

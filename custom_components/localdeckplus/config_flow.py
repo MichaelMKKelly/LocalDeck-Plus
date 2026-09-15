@@ -66,6 +66,11 @@ def _led_key(led: int) -> str:
     return f"led_{led:02d}"
 
 
+# The four press event types a button can be configured for. Used when
+# moving a button's configuration to another button.
+_BUTTON_EVENT_TYPES = ("single", "double", "triple", "long")
+
+
 def _light_state_hex(light_state) -> str | None:
     """Return a light state's target color as ``#RRGGBB``, or ``None``.
 
@@ -229,6 +234,7 @@ class LocalDeckPlusOptionsFlow(OptionsFlow):
             "button_action_triple": "Triple press action",
             "button_action_long": "Long press action",
             "set_led_conditions": "Set LED conditions",
+            "move_configuration": "Move configuration to another button",
             "return_to_main": "Return to main menu",
         }
         return self.async_show_menu(step_id="button_menu", menu_options=menu_options)
@@ -285,6 +291,85 @@ class LocalDeckPlusOptionsFlow(OptionsFlow):
             suggested,
         )
         return self.async_show_form(step_id=step_id, data_schema=schema)
+
+    # ------------------------------------------------------------------
+    # Move configuration to another button
+    # ------------------------------------------------------------------
+
+    async def async_step_move_configuration(self, user_input=None):
+        """Show the target-button selection menu for moving configuration.
+
+        One entry per other button (the source button is excluded). The
+        step description warns that the target's existing configuration
+        will be overwritten. Selecting a target moves the source button's
+        configuration to it and lands on the target's button menu.
+        """
+        source = self._pending_button
+        button_names = get_button_names(
+            self.hass, self.config_entry.data[CONF_DEVICE_ID]
+        )
+        menu_options = {}
+        for number in sorted(button_names):
+            if number == source:
+                continue
+            step_id = f"move_target_{number:02d}"
+
+            async def _target_step(_user_input=None, _target=number):
+                self._move_button_configuration(source, _target)
+                self._pending_button = _target
+                return await self.async_step_button_menu()
+
+            setattr(self, f"async_step_{step_id}", _target_step)
+            menu_options[step_id] = button_names[number]
+        menu_options["return_to_button_configuration"] = (
+            "Return to button configuration"
+        )
+        return self.async_show_menu(
+            step_id="move_configuration", menu_options=menu_options
+        )
+
+    async def async_step_return_to_button_configuration(self, user_input=None):
+        """Return to the button configuration menu without moving."""
+        return await self.async_step_button_menu()
+
+    def _move_button_configuration(self, source: int, target: int) -> None:
+        """Move all configuration from the source button to the target.
+
+        The target's existing configuration (press actions and LED
+        binding) is completely replaced by the source's, and the source
+        is left with a cleared configuration.
+        """
+        options = dict(self.config_entry.options)
+        actions = dict(options.get(OPT_BUTTON_ACTIONS, {}))
+        bindings = dict(options.get(OPT_LED_BINDINGS, {}))
+
+        # Capture the source's configuration before clearing it.
+        source_actions = {
+            event_type: actions[_action_key(source, event_type)]
+            for event_type in _BUTTON_EVENT_TYPES
+            if _action_key(source, event_type) in actions
+        }
+        source_binding = bindings.get(_led_key(source))
+
+        # Clear the source's configuration.
+        for event_type in _BUTTON_EVENT_TYPES:
+            actions.pop(_action_key(source, event_type), None)
+        bindings.pop(_led_key(source), None)
+
+        # Overwrite the target's configuration with the source's.
+        for event_type in _BUTTON_EVENT_TYPES:
+            actions.pop(_action_key(target, event_type), None)
+        bindings.pop(_led_key(target), None)
+        for event_type, action in source_actions.items():
+            actions[_action_key(target, event_type)] = action
+        if source_binding is not None:
+            bindings[_led_key(target)] = source_binding
+
+        options[OPT_BUTTON_ACTIONS] = actions
+        options[OPT_LED_BINDINGS] = bindings
+        self.hass.config_entries.async_update_entry(
+            self.config_entry, options=options
+        )
 
     # ------------------------------------------------------------------
     # Advanced configuration options (import / export / clear)

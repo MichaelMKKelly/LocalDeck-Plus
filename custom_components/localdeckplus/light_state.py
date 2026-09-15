@@ -68,6 +68,32 @@ def sanitize_light_state(light_state: dict | None) -> dict:
     }
 
 
+def scale_light_state_brightness(
+    light_state: dict, master_brightness_pct: float
+) -> dict:
+    """Scale a light state's brightness by the master brightness factor.
+
+    ``master_brightness_pct`` is 0-100. The state's ``brightness`` (0-255)
+    and/or ``brightness_pct`` (0-100) are scaled down by the factor; a
+    state without a brightness is returned unchanged. Returns a new dict;
+    the input is not mutated. A scaled brightness of 0 turns the light off
+    when sent to ``light.turn_on``.
+    """
+    if not isinstance(light_state, dict):
+        return {}
+    factor = max(0.0, min(100.0, float(master_brightness_pct))) / 100.0
+    if factor >= 1.0:
+        return light_state
+    result = dict(light_state)
+    brightness = result.get("brightness")
+    if isinstance(brightness, (int, float)) and 0 <= brightness <= 255:
+        result["brightness"] = int(round(brightness * factor))
+    brightness_pct = result.get("brightness_pct")
+    if isinstance(brightness_pct, (int, float)) and 0 <= brightness_pct <= 100:
+        result["brightness_pct"] = int(round(brightness_pct * factor))
+    return result
+
+
 def light_state_from_form_fields(user_input: dict) -> dict:
     """Build a light state dict from the config form fields.
 

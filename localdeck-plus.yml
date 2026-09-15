@@ -4,7 +4,7 @@ esphome:
   min_version: 2026.8.2
   project:
     name: MichaelMKKelly.LocalDeckPlus
-    version: 1.0.0
+    version: 1.1.0
   name_add_mac_suffix: true
   platformio_options:
     board_build.flash_mode: dio

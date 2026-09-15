@@ -237,7 +237,11 @@ class LocalDeckPlusOptionsFlow(OptionsFlow):
             "move_configuration": "Move configuration to another button",
             "return_to_main": "Return to main menu",
         }
-        return self.async_show_menu(step_id="button_menu", menu_options=menu_options)
+        return self.async_show_menu(
+            step_id="button_menu",
+            menu_options=menu_options,
+            description_placeholders={"button_name": self._button_name()},
+        )
 
     async def async_step_return_to_main(self, user_input=None):
         """Return to the main menu."""
@@ -290,7 +294,11 @@ class LocalDeckPlusOptionsFlow(OptionsFlow):
             vol.Schema({vol.Optional(CONF_ACTION): ActionSelector()}),
             suggested,
         )
-        return self.async_show_form(step_id=step_id, data_schema=schema)
+        return self.async_show_form(
+            step_id=step_id,
+            data_schema=schema,
+            description_placeholders={"button_name": self._button_name()},
+        )
 
     # ------------------------------------------------------------------
     # Move configuration to another button
@@ -325,7 +333,9 @@ class LocalDeckPlusOptionsFlow(OptionsFlow):
             "Return to button configuration"
         )
         return self.async_show_menu(
-            step_id="move_configuration", menu_options=menu_options
+            step_id="move_configuration",
+            menu_options=menu_options,
+            description_placeholders={"button_name": self._button_name()},
         )
 
     async def async_step_return_to_button_configuration(self, user_input=None):
@@ -498,7 +508,9 @@ class LocalDeckPlusOptionsFlow(OptionsFlow):
             menu_options["add_follow_light"] = "Add a new follow light rule"
         menu_options["return_to_button"] = "Return to button menu"
         return self.async_show_menu(
-            step_id="led_conditions_menu", menu_options=menu_options
+            step_id="led_conditions_menu",
+            menu_options=menu_options,
+            description_placeholders={"button_name": self._button_name()},
         )
 
     async def async_step_return_to_button(self, user_input=None):
@@ -519,7 +531,9 @@ class LocalDeckPlusOptionsFlow(OptionsFlow):
             self._save_led_conditions(conditions)
             return await self.async_step_led_conditions_menu()
         return self.async_show_form(
-            step_id="add_condition", data_schema=self._condition_rule_schema()
+            step_id="add_condition",
+            data_schema=self._condition_rule_schema(),
+            description_placeholders={"button_name": self._button_name()},
         )
 
     async def async_step_add_follow_light(self, user_input=None):
@@ -537,6 +551,7 @@ class LocalDeckPlusOptionsFlow(OptionsFlow):
         return self.async_show_form(
             step_id="add_follow_light",
             data_schema=self._follow_light_rule_schema(),
+            description_placeholders={"button_name": self._button_name()},
         )
 
     async def async_step_led_condition_menu(self, user_input=None):
@@ -571,7 +586,9 @@ class LocalDeckPlusOptionsFlow(OptionsFlow):
             menu_options["led_condition_delete"] = "Delete this condition rule"
         menu_options["return_to_led_conditions"] = "Return to LED conditions menu"
         return self.async_show_menu(
-            step_id="led_condition_menu", menu_options=menu_options
+            step_id="led_condition_menu",
+            menu_options=menu_options,
+            description_placeholders={"button_name": self._button_name()},
         )
 
     async def async_step_return_to_led_conditions(self, user_input=None):
@@ -641,7 +658,9 @@ class LocalDeckPlusOptionsFlow(OptionsFlow):
             self._condition_rule_schema(), suggested
         )
         return self.async_show_form(
-            step_id="led_condition_edit", data_schema=schema
+            step_id="led_condition_edit",
+            data_schema=schema,
+            description_placeholders={"button_name": self._button_name()},
         )
 
     async def async_step_led_follow_light_edit(self, user_input=None):
@@ -661,7 +680,9 @@ class LocalDeckPlusOptionsFlow(OptionsFlow):
             self._follow_light_rule_schema(), suggested
         )
         return self.async_show_form(
-            step_id="led_follow_light_edit", data_schema=schema
+            step_id="led_follow_light_edit",
+            data_schema=schema,
+            description_placeholders={"button_name": self._button_name()},
         )
 
     async def async_step_led_condition_delete(self, user_input=None):
@@ -674,6 +695,20 @@ class LocalDeckPlusOptionsFlow(OptionsFlow):
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
+
+    def _button_name(self) -> str:
+        """Return the display name of the pending button.
+
+        Used to label the button sub-steps (via ``description_placeholders``)
+        so the user can tell which button is being edited. Falls back to a
+        numbered name if the entity registry no longer has the button.
+        """
+        button_names = get_button_names(
+            self.hass, self.config_entry.data[CONF_DEVICE_ID]
+        )
+        return button_names.get(
+            self._pending_button, f"Button {self._pending_button:02d}"
+        )
 
     def _led_binding(self) -> dict:
         """Return the current binding dict for the pending LED."""

@@ -27,47 +27,47 @@
       },
       "button_menu": {
         "title": "Button configuration",
-        "description": "Configure the press actions for this button, or manage the conditions of its paired LED."
+        "description": "{button_name}: Configure the press actions for this button, or manage the conditions of its paired LED."
       },
       "button_action_single": {
         "title": "Press action",
-        "description": "Choose the action to run on a single press. Leave empty to clear the action.",
+        "description": "{button_name}: Choose the action to run on a single press. Leave empty to clear the action.",
         "data": {
           "action": "Action"
         }
       },
       "button_action_double": {
         "title": "Double press action",
-        "description": "Choose the action to run on a double press. Leave empty to clear the action.",
+        "description": "{button_name}: Choose the action to run on a double press. Leave empty to clear the action.",
         "data": {
           "action": "Action"
         }
       },
       "button_action_triple": {
         "title": "Triple press action",
-        "description": "Choose the action to run on a triple press. Leave empty to clear the action.",
+        "description": "{button_name}: Choose the action to run on a triple press. Leave empty to clear the action.",
         "data": {
           "action": "Action"
         }
       },
       "button_action_long": {
         "title": "Long press action",
-        "description": "Choose the action to run on a long press. Leave empty to clear the action.",
+        "description": "{button_name}: Choose the action to run on a long press. Leave empty to clear the action.",
         "data": {
           "action": "Action"
         }
       },
       "move_configuration": {
         "title": "Move configuration to another button",
-        "description": "Select the button to move this button's configuration to. This will overwrite any existing configuration on the target button, and the source button's configuration will be cleared."
+        "description": "{button_name}: Select the button to move this button's configuration to. This will overwrite any existing configuration on the target button, and the source button's configuration will be cleared."
       },
       "led_conditions_menu": {
         "title": "LED conditions",
-        "description": "Manage the rules for this LED. Rules are evaluated in priority order and the first active rule wins: a condition rule is active when its condition matches, and a follow light rule is always active and mirrors the selected light's state, color, and brightness. If no rule is active, the LED is turned off."
+        "description": "{button_name}: Manage the rules for this LED. Rules are evaluated in priority order and the first active rule wins: a condition rule is active when its condition matches, and a follow light rule is always active and mirrors the selected light's state, color, and brightness. If no rule is active, the LED is turned off."
       },
       "add_condition": {
         "title": "Add condition rule",
-        "description": "Define a condition and the light state (color, brightness, effect) to apply when it matches.",
+        "description": "{button_name}: Define a condition and the light state (color, brightness, effect) to apply when it matches.",
         "data": {
           "condition": "Condition",
           "color": "Color",
@@ -77,18 +77,18 @@
       },
       "add_follow_light": {
         "title": "Add follow light rule",
-        "description": "Select the light entity to mirror. While this rule is the first active rule, the LED follows that light's state, color, and brightness.",
+        "description": "{button_name}: Select the light entity to mirror. While this rule is the first active rule, the LED follows that light's state, color, and brightness.",
         "data": {
           "follow_light": "Light to follow"
         }
       },
       "led_condition_menu": {
         "title": "Condition rule",
-        "description": "Configure, reorder, enable or disable, or delete this rule."
+        "description": "{button_name}: Configure, reorder, enable or disable, or delete this rule."
       },
       "led_condition_edit": {
         "title": "Edit condition rule",
-        "description": "Update the condition and the light state (color, brightness, effect) to apply when it matches.",
+        "description": "{button_name}: Update the condition and the light state (color, brightness, effect) to apply when it matches.",
         "data": {
           "condition": "Condition",
           "color": "Color",
@@ -98,7 +98,7 @@
       },
       "led_follow_light_edit": {
         "title": "Edit follow light rule",
-        "description": "Select the light entity to mirror. While this rule is the first active rule, the LED follows that light's state, color, and brightness.",
+        "description": "{button_name}: Select the light entity to mirror. While this rule is the first active rule, the LED follows that light's state, color, and brightness.",
         "data": {
           "follow_light": "Light to follow"
         }

@@ -68,6 +68,7 @@ A few things about the stock setup were not to my liking:
     - Rules can be deleted or disabled
     - Rules can be mixed so you can have a state based on a condition, and if that condition fails, it proceeds to following a light.
     - Invalid/Incomplete condition rules should be skipped whilst producing an error in the core log.
+- The configuration of a button can be moved to a different button.
 - Disable LEDs Switch to darken your LocalDeck, which, when switched off, allows them to go right back to following their rules. NB: You can still manually turn lights on when this is on via the ESPHome integration.
 - Master Brightness slider to set a scaling factor for all brightness levels from rules.
 - Import / Export devices configuration as json.

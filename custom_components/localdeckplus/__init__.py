@@ -373,6 +373,7 @@ async def _setup_binding_engine(
     unsubs = []
     checkers = []  # all ConditionCheckers, for cleanup
     apply_leds: list[Callable[[], Awaitable[None]]] = []
+    driven_light_entity_ids: set[str] = set()
 
     for led_key, binding in bindings.items():
         try:
@@ -509,11 +510,37 @@ async def _setup_binding_engine(
             _apply_led(), name=f"localdeckplus binding init {led_key}"
         )
         apply_leds.append(_apply_led)
+        driven_light_entity_ids.add(light_entity_id)
+
+    # Turn off any discovered LED that has no rules in the current config.
+    # These LEDs are not driven by the engine, so without this they would
+    # keep whatever state they were left in (e.g. remnants from a previous
+    # configuration after an import).
+    unbound_light_entity_ids = [
+        eid
+        for eid in lights.values()
+        if eid and eid not in driven_light_entity_ids
+    ]
+
+    async def _turn_off_unbound():
+        """Turn off every LED that has no rules in the current config."""
+        for eid in unbound_light_entity_ids:
+            await _set_light(hass, eid, None, False)
+
+    if unbound_light_entity_ids:
+        hass.async_create_task(
+            _turn_off_unbound(), name="localdeckplus turn off unbound leds"
+        )
 
     async def _apply_all():
-        """Re-evaluate every binding (called when the switch is released)."""
+        """Re-evaluate every binding and turn off any LED without rules.
+
+        Called when the switch is released or when the ESPHome device
+        (re)becomes available.
+        """
         for apply_led in apply_leds:
             await apply_led()
+        await _turn_off_unbound()
 
     runtime.apply_all = _apply_all
 

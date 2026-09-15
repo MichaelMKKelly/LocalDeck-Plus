@@ -97,7 +97,7 @@ It is recommended that, before you start, do the following:
 - Connect to your WiFi network using Web Tools / WiFi Captive Portal / BLE.
 
 ### Integration
-#### Option A - Add this repo to HACS as a custom repository
+#### Option A - (Recommended) Add this repo to HACS as a custom repository
 - On the HACS page open the overflow menu in the top right
 - Select "Custom repositories"
 - Add this repo by its URL `https://github.com/MichaelMKKelly/LocalDeck-Plus` with a type of "Integration"

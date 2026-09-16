@@ -12,10 +12,13 @@ OPT_BUTTON_ACTIONS = "button_actions"
 OPT_LED_BINDINGS = "led_bindings"
 
 # Platforms set up by the integration
-PLATFORMS = ["switch"]
+PLATFORMS = ["switch", "number"]
 
 # Switch entity name
 SWITCH_DISABLE_LEDS = "Disable LEDs"
+
+# Number entity name
+NUMBER_MASTER_BRIGHTNESS = "Master Brightness"
 
 # Button action keys
 CONF_ACTION = "action"
@@ -42,6 +45,8 @@ CONF_ENABLED = "enabled"
 
 # Defaults
 DEFAULT_BRIGHTNESS_PCT = 100
+# Default master brightness (100 = no scaling)
+DEFAULT_MASTER_BRIGHTNESS = 100
 
 # Value for the "no effect" option in the effect dropdown. It is also the
 # value sent to light.turn_on to clear any active effect: ESPHome clears
@@ -57,3 +62,8 @@ EFFECT_OPTIONS = ["Pulse", "Fast Pulse", "Slow Pulse"]
 def switch_unique_id(entry_id: str) -> str:
     """Return the unique_id of the "Disable LEDs" switch for a config entry."""
     return f"{DOMAIN}_disable_leds_{entry_id}"
+
+
+def number_master_brightness_unique_id(entry_id: str) -> str:
+    """Return the unique_id of the "Master Brightness" number for a config entry."""
+    return f"{DOMAIN}_master_brightness_{entry_id}"

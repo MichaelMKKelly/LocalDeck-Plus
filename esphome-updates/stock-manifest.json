@@ -5,10 +5,10 @@
     {
       "chipFamily": "ESP32-C3",
       "ota": {
-        "md5": "6b896f10525fa5b2a0db9d16ea6bc730",
-        "path": "https://github.com/LocalBytes/localdeck-config/releases/download/v0.7/esphome-localdeck.ota.bin",
-        "release_url": "https://github.com/LocalBytes/localdeck-config/releases/tag/v0.7",
-        "summary": "Stock LocalDeck Firmware From LocalBytes 0.7 - Return to Stock Firmware"
+        "md5": "151c73e2670709c928452852e50e5f11",
+        "path": "https://github.com/LocalBytes/localdeck-config/releases/download/v0.8/esphome-localdeck.ota.bin",
+        "release_url": "https://github.com/LocalBytes/localdeck-config/releases/tag/v0.8",
+        "summary": "Stock LocalDeck Firmware From LocalBytes 0.8 - Return to Stock Firmware"
       }
     }
   ]

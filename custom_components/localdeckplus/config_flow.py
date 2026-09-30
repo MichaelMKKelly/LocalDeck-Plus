@@ -36,12 +36,14 @@ from .const import (
     CONF_EFFECT,
     CONF_ENABLED,
     CONF_FOLLOW_LIGHT,
+    CONF_FRIENDLY_NAME,
     CONF_LIGHT_STATE,
     DEFAULT_BRIGHTNESS_PCT,
     DOMAIN,
     EFFECT_NONE,
     EFFECT_OPTIONS,
     OPT_BUTTON_ACTIONS,
+    OPT_BUTTON_FRIENDLY_NAMES,
     OPT_LED_BINDINGS,
 )
 from .discovery import (
@@ -64,6 +66,11 @@ def _action_key(button: int, event_type: str) -> str:
 
 def _led_key(led: int) -> str:
     return f"led_{led:02d}"
+
+
+def _friendly_name_key(button: int) -> str:
+    """Return the options key for a button's friendly name."""
+    return f"{button:02d}"
 
 
 # The four press event types a button can be configured for. Used when
@@ -203,7 +210,8 @@ class LocalDeckPlusOptionsFlow(OptionsFlow):
 
         A handler for each button entry is created on the fly (as an
         instance attribute) so any number of buttons is supported. The
-        labels come straight from the ESPHome event entity names.
+        labels are the ESPHome event entity names, with the button's
+        friendly name appended in parentheses when one is set.
         """
         button_names = get_button_names(
             self.hass, self.config_entry.data[CONF_DEVICE_ID]
@@ -217,7 +225,7 @@ class LocalDeckPlusOptionsFlow(OptionsFlow):
                 return await self.async_step_button_menu()
 
             setattr(self, f"async_step_{step_id}", _button_step)
-            menu_options[step_id] = button_names[number]
+            menu_options[step_id] = self._button_display_name(number)
         menu_options["advanced"] = "Advanced configuration options"
         menu_options["done"] = "Done"
         return self.async_show_menu(step_id="menu", menu_options=menu_options)
@@ -234,6 +242,7 @@ class LocalDeckPlusOptionsFlow(OptionsFlow):
             "button_action_triple": "Triple press action",
             "button_action_long": "Long press action",
             "set_led_conditions": "Set LED conditions",
+            "edit_friendly_name": "Edit friendly name",
             "move_configuration": "Move configuration to another button",
             "return_to_main": "Return to main menu",
         }
@@ -301,6 +310,55 @@ class LocalDeckPlusOptionsFlow(OptionsFlow):
         )
 
     # ------------------------------------------------------------------
+    # Edit friendly name
+    # ------------------------------------------------------------------
+
+    async def async_step_edit_friendly_name(self, user_input=None):
+        """Show the friendly name form for the pending button.
+
+        The text box is pre-filled with the current friendly name (if any).
+        Submitting with a non-empty name sets the friendly name; submitting
+        with an empty name clears it.
+        """
+        if user_input is not None:
+            name = (user_input.get(CONF_FRIENDLY_NAME) or "").strip()
+            options = dict(self.config_entry.options)
+            friendly_names = dict(options.get(OPT_BUTTON_FRIENDLY_NAMES, {}))
+            key = _friendly_name_key(self._pending_button)
+            if name:
+                friendly_names[key] = name
+            else:
+                friendly_names.pop(key, None)
+            options[OPT_BUTTON_FRIENDLY_NAMES] = friendly_names
+            self.hass.config_entries.async_update_entry(
+                self.config_entry, options=options
+            )
+            return await self.async_step_button_menu()
+        suggested = {
+            CONF_FRIENDLY_NAME: self._button_friendly_name(
+                self._pending_button
+            )
+        }
+        schema = self.add_suggested_values_to_schema(
+            vol.Schema(
+                {
+                    vol.Optional(CONF_FRIENDLY_NAME): TextSelector(
+                        TextSelectorConfig(
+                            multiline=False,
+                            type=TextSelectorType.TEXT,
+                        )
+                    )
+                }
+            ),
+            suggested,
+        )
+        return self.async_show_form(
+            step_id="edit_friendly_name",
+            data_schema=schema,
+            description_placeholders={"button_name": self._button_name()},
+        )
+
+    # ------------------------------------------------------------------
     # Move configuration to another button
     # ------------------------------------------------------------------
 
@@ -328,7 +386,7 @@ class LocalDeckPlusOptionsFlow(OptionsFlow):
                 return await self.async_step_button_menu()
 
             setattr(self, f"async_step_{step_id}", _target_step)
-            menu_options[step_id] = button_names[number]
+            menu_options[step_id] = self._button_display_name(number)
         menu_options["return_to_button_configuration"] = (
             "Return to button configuration"
         )
@@ -345,13 +403,14 @@ class LocalDeckPlusOptionsFlow(OptionsFlow):
     def _move_button_configuration(self, source: int, target: int) -> None:
         """Move all configuration from the source button to the target.
 
-        The target's existing configuration (press actions and LED
-        binding) is completely replaced by the source's, and the source
-        is left with a cleared configuration.
+        The target's existing configuration (press actions, LED binding,
+        and friendly name) is completely replaced by the source's, and the
+        source is left with a cleared configuration.
         """
         options = dict(self.config_entry.options)
         actions = dict(options.get(OPT_BUTTON_ACTIONS, {}))
         bindings = dict(options.get(OPT_LED_BINDINGS, {}))
+        friendly_names = dict(options.get(OPT_BUTTON_FRIENDLY_NAMES, {}))
 
         # Capture the source's configuration before clearing it.
         source_actions = {
@@ -360,23 +419,31 @@ class LocalDeckPlusOptionsFlow(OptionsFlow):
             if _action_key(source, event_type) in actions
         }
         source_binding = bindings.get(_led_key(source))
+        source_friendly_name = friendly_names.get(
+            _friendly_name_key(source)
+        )
 
         # Clear the source's configuration.
         for event_type in _BUTTON_EVENT_TYPES:
             actions.pop(_action_key(source, event_type), None)
         bindings.pop(_led_key(source), None)
+        friendly_names.pop(_friendly_name_key(source), None)
 
         # Overwrite the target's configuration with the source's.
         for event_type in _BUTTON_EVENT_TYPES:
             actions.pop(_action_key(target, event_type), None)
         bindings.pop(_led_key(target), None)
+        friendly_names.pop(_friendly_name_key(target), None)
         for event_type, action in source_actions.items():
             actions[_action_key(target, event_type)] = action
         if source_binding is not None:
             bindings[_led_key(target)] = source_binding
+        if source_friendly_name is not None:
+            friendly_names[_friendly_name_key(target)] = source_friendly_name
 
         options[OPT_BUTTON_ACTIONS] = actions
         options[OPT_LED_BINDINGS] = bindings
+        options[OPT_BUTTON_FRIENDLY_NAMES] = friendly_names
         self.hass.config_entries.async_update_entry(
             self.config_entry, options=options
         )
@@ -398,9 +465,10 @@ class LocalDeckPlusOptionsFlow(OptionsFlow):
         """Show the import/export form with the configuration text box.
 
         The text box is pre-filled with the current configuration (button
-        actions and LED bindings, as JSON) so the user can copy it. Pasting
-        a configuration into the box and submitting imports it, replacing
-        the current button actions and LED bindings.
+        actions, LED bindings, and button friendly names, as JSON) so the
+        user can copy it. Pasting a configuration into the box and
+        submitting imports it, replacing the current button actions, LED
+        bindings, and friendly names.
         """
         if user_input is not None:
             raw = user_input.get(CONF_CONFIG) or ""
@@ -418,7 +486,11 @@ class LocalDeckPlusOptionsFlow(OptionsFlow):
                     data_schema=self._config_text_schema(),
                     errors={"base": "invalid_config"},
                 )
-            for key in (OPT_BUTTON_ACTIONS, OPT_LED_BINDINGS):
+            for key in (
+                OPT_BUTTON_ACTIONS,
+                OPT_LED_BINDINGS,
+                OPT_BUTTON_FRIENDLY_NAMES,
+            ):
                 if key in config and not isinstance(config[key], dict):
                     return self.async_show_form(
                         step_id="import_export",
@@ -430,6 +502,10 @@ class LocalDeckPlusOptionsFlow(OptionsFlow):
                 options[OPT_BUTTON_ACTIONS] = config[OPT_BUTTON_ACTIONS]
             if OPT_LED_BINDINGS in config:
                 options[OPT_LED_BINDINGS] = config[OPT_LED_BINDINGS]
+            if OPT_BUTTON_FRIENDLY_NAMES in config:
+                options[OPT_BUTTON_FRIENDLY_NAMES] = config[
+                    OPT_BUTTON_FRIENDLY_NAMES
+                ]
             self.hass.config_entries.async_update_entry(
                 self.config_entry, options=options
             )
@@ -441,10 +517,12 @@ class LocalDeckPlusOptionsFlow(OptionsFlow):
         return self.async_show_form(step_id="import_export", data_schema=schema)
 
     async def async_step_clear_configuration(self, user_input=None):
-        """Clear all button actions and LED bindings, then return to the menu."""
+        """Clear all button actions, LED bindings, and friendly names, then
+        return to the menu."""
         options = dict(self.config_entry.options)
         options[OPT_BUTTON_ACTIONS] = {}
         options[OPT_LED_BINDINGS] = {}
+        options[OPT_BUTTON_FRIENDLY_NAMES] = {}
         self.hass.config_entries.async_update_entry(
             self.config_entry, options=options
         )
@@ -696,19 +774,37 @@ class LocalDeckPlusOptionsFlow(OptionsFlow):
     # Helpers
     # ------------------------------------------------------------------
 
-    def _button_name(self) -> str:
-        """Return the display name of the pending button.
+    def _button_friendly_name(self, button: int) -> str:
+        """Return the friendly name for a button, or "" if unset."""
+        names = self.config_entry.options.get(OPT_BUTTON_FRIENDLY_NAMES, {})
+        name = names.get(_friendly_name_key(button))
+        return name if isinstance(name, str) else ""
 
-        Used to label the button sub-steps (via ``description_placeholders``)
-        so the user can tell which button is being edited. Falls back to a
-        numbered name if the entity registry no longer has the button.
+    def _button_display_name(self, button: int) -> str:
+        """Return the display name of a button.
+
+        The base name comes from the ESPHome event entity name. If a
+        friendly name is set for the button, it is appended in parentheses,
+        e.g. ``"Button 01 R1C1 (Lights)"``.
         """
         button_names = get_button_names(
             self.hass, self.config_entry.data[CONF_DEVICE_ID]
         )
-        return button_names.get(
-            self._pending_button, f"Button {self._pending_button:02d}"
-        )
+        base_name = button_names.get(button, f"Button {button:02d}")
+        friendly_name = self._button_friendly_name(button)
+        if friendly_name:
+            return f"{base_name} ({friendly_name})"
+        return base_name
+
+    def _button_name(self) -> str:
+        """Return the display name of the pending button.
+
+        Used to label the button sub-steps (via ``description_placeholders``)
+        so the user can tell which button is being edited. Includes the
+        friendly name in parentheses when one is set. Falls back to a
+        numbered name if the entity registry no longer has the button.
+        """
+        return self._button_display_name(self._pending_button)
 
     def _led_binding(self) -> dict:
         """Return the current binding dict for the pending LED."""
@@ -814,9 +910,9 @@ class LocalDeckPlusOptionsFlow(OptionsFlow):
     def _export_config_text(self) -> str:
         """Return the current configuration as an indented JSON string.
 
-        Only the button actions and LED bindings are included — never the
-        device-identifying data — so the text can be copied to another
-        LocalDeck.
+        Only the button actions, LED bindings, and button friendly names
+        are included — never the device-identifying data — so the text can
+        be copied to another LocalDeck.
         """
         config = {
             OPT_BUTTON_ACTIONS: dict(
@@ -824,6 +920,9 @@ class LocalDeckPlusOptionsFlow(OptionsFlow):
             ),
             OPT_LED_BINDINGS: dict(
                 self.config_entry.options.get(OPT_LED_BINDINGS, {})
+            ),
+            OPT_BUTTON_FRIENDLY_NAMES: dict(
+                self.config_entry.options.get(OPT_BUTTON_FRIENDLY_NAMES, {})
             ),
         }
         return json.dumps(config, indent=2)

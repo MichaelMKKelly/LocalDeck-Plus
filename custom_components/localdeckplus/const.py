@@ -10,6 +10,10 @@ CONF_DEVICE_IDENTIFIER = "device_identifier"
 # Options keys
 OPT_BUTTON_ACTIONS = "button_actions"
 OPT_LED_BINDINGS = "led_bindings"
+# Per-button friendly names: maps a zero-padded button number (e.g. "01")
+# to a short label shown in parentheses next to the button name in the
+# menus (e.g. "Button 01 R1C1 (Lights)"). Part of the import/export config.
+OPT_BUTTON_FRIENDLY_NAMES = "button_friendly_names"
 
 # Platforms set up by the integration
 PLATFORMS = ["switch", "number"]
@@ -22,6 +26,9 @@ NUMBER_MASTER_BRIGHTNESS = "Master Brightness"
 
 # Button action keys
 CONF_ACTION = "action"
+
+# Friendly name form field (the "Edit friendly name" step)
+CONF_FRIENDLY_NAME = "friendly_name"
 
 # Import/export configuration text field
 CONF_CONFIG = "config"

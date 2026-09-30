@@ -57,6 +57,13 @@
           "action": "Action"
         }
       },
+      "edit_friendly_name": {
+        "title": "Edit friendly name",
+        "description": "{button_name}: Enter a friendly name for this button. It is shown in parentheses next to the button name in the menus. Leave empty to remove the friendly name.",
+        "data": {
+          "friendly_name": "Friendly name"
+        }
+      },
       "move_configuration": {
         "title": "Move configuration to another button",
         "description": "{button_name}: Select the button to move this button's configuration to. This will overwrite any existing configuration on the target button, and the source button's configuration will be cleared."

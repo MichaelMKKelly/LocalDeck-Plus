@@ -364,28 +364,6 @@ async def _execute_action(hass: HomeAssistant, action) -> None:
         await script.async_unload()
 
 
-async def _run_service(
-    hass: HomeAssistant,
-    domain: str,
-    service: str,
-    data: dict,
-    target: dict | None = None,
-) -> None:
-    """Call a service and log any failure.
-
-    The target (entity_id/device_id/...) is merged into the data dict,
-    since 2026.9.0 service schema validation requires the target keys to
-    be present in the service data itself rather than passed separately.
-    """
-    data = dict(data)
-    if target:
-        data.update(target)
-    try:
-        await hass.services.async_call(domain, service, data, blocking=False)
-    except Exception:  # noqa: BLE001
-        _LOGGER.exception("Failed to execute action %s.%s", domain, service)
-
-
 # ----------------------------------------------------------------------
 # LED binding engine
 # ----------------------------------------------------------------------

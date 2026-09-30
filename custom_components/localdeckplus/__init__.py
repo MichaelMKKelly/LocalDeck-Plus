@@ -20,6 +20,7 @@ from homeassistant.helpers.condition import (
 )
 from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.script import Script
+from homeassistant.helpers.template import Template
 from homeassistant.util import dt as dt_util
 
 from .const import (
@@ -209,8 +210,45 @@ def _setup_event_engine(hass: HomeAssistant, entry: ConfigEntry, events: dict):
     return _cleanup
 
 
+_TEMPLATE_FIELDS = (
+    "data",
+    "data_template",
+    "target",
+    "event_data",
+    "event_data_template",
+)
+
+
+def _template_value(hass: HomeAssistant, value):
+    """Recursively convert string values to ``Template`` instances.
+
+    The Script engine renders templates in service data via
+    ``template.render_complex``, which only renders ``Template`` instances
+    — plain strings are returned as-is. In a normal HA script the YAML
+    schema converts these values to ``Template`` objects; the raw
+    ActionSelector dict we pass to the engine has not been through that
+    schema, so templates in the data would otherwise be sent unrendered.
+    Static strings (no ``{{``/``{%``) are flagged ``is_static`` and render
+    back to themselves, so wrapping is safe for non-template values.
+    """
+    if isinstance(value, str):
+        return Template(value, hass)
+    if isinstance(value, list):
+        return [_template_value(hass, item) for item in value]
+    if isinstance(value, dict):
+        return {key: _template_value(hass, item) for key, item in value.items()}
+    return value
+
+
+def _template_action_fields(hass: HomeAssistant, action: dict) -> None:
+    """Wrap string values in template-rendered action fields with Template."""
+    for key in _TEMPLATE_FIELDS:
+        if key in action:
+            action[key] = _template_value(hass, action[key])
+
+
 async def _prepare_action_conditions(hass: HomeAssistant, action):
-    """Recursively validate conditions inside a script action structure.
+    """Recursively validate conditions and template fields in a script action.
 
     The Script engine resolves conditions via ``async_from_config`` without
     running the condition schema. Legacy-format conditions (e.g. a ``state``
@@ -221,8 +259,16 @@ async def _prepare_action_conditions(hass: HomeAssistant, action):
     integration applies) normalizes them (``entity_id`` string -> list,
     ``behavior`` default, ``for`` -> timedelta) so the engine can process
     them.
+
+    The engine also renders templates in service data via
+    ``template.render_complex``, which only renders ``Template`` instances
+    (plain strings pass through unrendered). The raw ActionSelector dict has
+    not been through the YAML schema that performs that conversion, so
+    string values in the data/target/event_data fields are wrapped in
+    ``Template`` here.
     """
     if isinstance(action, dict):
+        _template_action_fields(hass, action)
         if "if" in action and isinstance(action["if"], list):
             action["if"] = await async_validate_conditions_config(
                 hass, action["if"]

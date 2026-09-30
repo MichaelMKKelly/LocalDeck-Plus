@@ -91,7 +91,7 @@ def get_button_names(hass, device_id):
     """
     entity_registry = er.async_get(hass)
     names = {}
-    for entity_id, entry in entity_registry.entities.items():
+    for entry in entity_registry.entities.values():
         if entry.device_id != device_id:
             continue
         if entry.domain == "event":

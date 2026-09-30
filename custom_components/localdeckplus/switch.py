@@ -6,25 +6,15 @@ matter the state of their rules. Turning the switch off re-enables the
 engine and re-applies every rule so the LEDs return to the correct state.
 """
 
-import logging
-
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import STATE_ON
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import device_registry as dr
-from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 
-from .const import (
-    CONF_DEVICE_ID,
-    CONF_DEVICE_IDENTIFIER,
-    SWITCH_DISABLE_LEDS,
-    switch_unique_id,
-)
-
-_LOGGER = logging.getLogger(__name__)
+from .const import SWITCH_DISABLE_LEDS, switch_unique_id
+from .device import device_info_for_entry
 
 
 async def async_setup_entry(
@@ -49,7 +39,7 @@ class DisableLedsSwitch(SwitchEntity, RestoreEntity):
         self._hass = hass
         self._runtime = entry.runtime_data
         self._attr_unique_id = switch_unique_id(entry.entry_id)
-        device_info = _device_info(hass, entry)
+        device_info = device_info_for_entry(hass, entry)
         if device_info is not None:
             self._attr_device_info = device_info
 
@@ -95,28 +85,3 @@ class DisableLedsSwitch(SwitchEntity, RestoreEntity):
         if self._runtime.apply_all is not None:
             await self._runtime.apply_all()
         self.async_write_ha_state()
-
-
-def _device_info(hass: HomeAssistant, entry: ConfigEntry) -> DeviceInfo | None:
-    """Link the switch to the LocalDeck (ESPHome) device.
-
-    Prefers the device's own identifiers from the registry. If the lookup
-    yields a device with no identifiers (e.g. a stale registry id), falls
-    back to the identifier stored at setup time under the ESPHome
-    namespace. Returns ``None`` if no usable identifier is available, in
-    which case the switch is added without a device link.
-    """
-    device_registry = dr.async_get(hass)
-    device = device_registry.async_get(entry.data[CONF_DEVICE_ID])
-    if device is not None and device.identifiers:
-        return DeviceInfo(identifiers=device.identifiers)
-    identifier = entry.data.get(CONF_DEVICE_IDENTIFIER)
-    if identifier:
-        _LOGGER.debug(
-            "Device %s has no registry identifiers; falling back to stored "
-            "identifier %r",
-            entry.data[CONF_DEVICE_ID],
-            identifier,
-        )
-        return DeviceInfo(identifiers={("esphome", identifier)})
-    return None

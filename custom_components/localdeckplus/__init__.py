@@ -2,21 +2,25 @@
 
 import asyncio
 import logging
+from copy import deepcopy
 from dataclasses import dataclass, field
 from datetime import timedelta
 from typing import Awaitable, Callable
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import STATE_OFF, STATE_ON, STATE_UNAVAILABLE, STATE_UNKNOWN
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import Context, HomeAssistant, callback
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.condition import (
     ATTR_BEHAVIOR,
     BEHAVIOR_ANY,
     async_extract_entities,
     async_from_config,
+    async_validate_conditions_config,
 )
 from homeassistant.helpers.event import async_track_state_change_event
+from homeassistant.helpers.script import Script
+from homeassistant.helpers.template import Template
 from homeassistant.util import dt as dt_util
 
 from .const import (
@@ -206,76 +210,158 @@ def _setup_event_engine(hass: HomeAssistant, entry: ConfigEntry, events: dict):
     return _cleanup
 
 
-async def _execute_action(hass: HomeAssistant, action) -> None:
-    """Execute a configured action (service call, scene, script or event).
+_TEMPLATE_FIELDS = (
+    "data",
+    "data_template",
+    "target",
+    "event_data",
+    "event_data_template",
+)
 
-    The ActionSelector stores actions in the standard HA action format:
-      {"action": "domain.service", "target": {...}, "data": {...}}
-      {"action": "scene", "scene": "scene.id"}
-      {"action": "script", "script": "script.id"}
-      {"action": "event", "event": "my_event"}
 
-    The ActionSelector may return a single action dict or a list of
-    action dicts; both are supported.
+def _template_value(hass: HomeAssistant, value):
+    """Recursively convert string values to ``Template`` instances.
+
+    The Script engine renders templates in service data via
+    ``template.render_complex``, which only renders ``Template`` instances
+    — plain strings are returned as-is. In a normal HA script the YAML
+    schema converts these values to ``Template`` objects; the raw
+    ActionSelector dict we pass to the engine has not been through that
+    schema, so templates in the data would otherwise be sent unrendered.
+    Static strings (no ``{{``/``{%``) are flagged ``is_static`` and render
+    back to themselves, so wrapping is safe for non-template values.
     """
+    if isinstance(value, str):
+        return Template(value, hass)
+    if isinstance(value, list):
+        return [_template_value(hass, item) for item in value]
+    if isinstance(value, dict):
+        return {key: _template_value(hass, item) for key, item in value.items()}
+    return value
+
+
+def _template_action_fields(hass: HomeAssistant, action: dict) -> None:
+    """Wrap string values in template-rendered action fields with Template."""
+    for key in _TEMPLATE_FIELDS:
+        if key in action:
+            action[key] = _template_value(hass, action[key])
+
+
+async def _prepare_action_conditions(hass: HomeAssistant, action):
+    """Recursively validate conditions and template fields in a script action.
+
+    The Script engine resolves conditions via ``async_from_config`` without
+    running the condition schema. Legacy-format conditions (e.g. a ``state``
+    condition with a top-level ``entity_id`` string) are then misread — the
+    string is iterated character-by-character, producing an "unknown entity"
+    error for each character. Running each condition through
+    ``async_validate_conditions_config`` (the same validation the script
+    integration applies) normalizes them (``entity_id`` string -> list,
+    ``behavior`` default, ``for`` -> timedelta) so the engine can process
+    them.
+
+    The engine also renders templates in service data via
+    ``template.render_complex``, which only renders ``Template`` instances
+    (plain strings pass through unrendered). The raw ActionSelector dict has
+    not been through the YAML schema that performs that conversion, so
+    string values in the data/target/event_data fields are wrapped in
+    ``Template`` here.
+    """
+    if isinstance(action, dict):
+        _template_action_fields(hass, action)
+        if "if" in action and isinstance(action["if"], list):
+            action["if"] = await async_validate_conditions_config(
+                hass, action["if"]
+            )
+        for key in ("then", "else", "default", "sequence"):
+            if key in action and isinstance(action[key], list):
+                action[key] = [
+                    await _prepare_action_conditions(hass, item)
+                    for item in action[key]
+                ]
+        if "choose" in action and isinstance(action["choose"], list):
+            for choice in action["choose"]:
+                if not isinstance(choice, dict):
+                    continue
+                if isinstance(choice.get("conditions"), list):
+                    choice["conditions"] = await async_validate_conditions_config(
+                        hass, choice["conditions"]
+                    )
+                if isinstance(choice.get("sequence"), list):
+                    choice["sequence"] = [
+                        await _prepare_action_conditions(hass, item)
+                        for item in choice["sequence"]
+                    ]
+        repeat = action.get("repeat")
+        if isinstance(repeat, dict):
+            for key in ("while", "until"):
+                if isinstance(repeat.get(key), list):
+                    repeat[key] = await async_validate_conditions_config(
+                        hass, repeat[key]
+                    )
+            if isinstance(repeat.get("sequence"), list):
+                repeat["sequence"] = [
+                    await _prepare_action_conditions(hass, item)
+                    for item in repeat["sequence"]
+                ]
+        if "parallel" in action and isinstance(action["parallel"], list):
+            for parallel in action["parallel"]:
+                if isinstance(parallel, dict) and isinstance(
+                    parallel.get("sequence"), list
+                ):
+                    parallel["sequence"] = [
+                        await _prepare_action_conditions(hass, item)
+                        for item in parallel["sequence"]
+                    ]
+        return action
     if isinstance(action, list):
-        for item in action:
-            await _execute_action(hass, item)
-        return
-    if not isinstance(action, dict):
+        return [
+            await _prepare_action_conditions(hass, item) for item in action
+        ]
+    return action
+
+
+async def _execute_action(hass: HomeAssistant, action) -> None:
+    """Execute a configured action through the HA script engine.
+
+    The ActionSelector stores actions in the standard HA script action
+    format. Running them through the script engine supports every action
+    type (service calls, scenes, scripts, events, if/then/else, wait,
+    repeat, choose, parallel, ...) and future-proofs against new types.
+    """
+    if isinstance(action, dict):
+        actions = [action]
+    elif isinstance(action, list):
+        actions = [item for item in action if isinstance(item, dict)]
+    else:
         _LOGGER.warning("Ignoring non-dict action: %r", action)
         return
-
-    # Scene reference
-    if isinstance(action.get("scene"), str):
-        await _run_service(
-            hass, "scene", "turn_on", {"scene_id": action["scene"]}
-        )
+    if not actions:
         return
 
-    # Script reference
-    if isinstance(action.get("script"), str):
-        await _run_service(
-            hass, "script", "turn_on", {"entity_id": action["script"]}
-        )
-        return
-
-    # Event
-    if isinstance(action.get("event"), str):
-        hass.bus.async_fire(action["event"])
-        return
-
-    # Service call: {"action": "domain.service", "target": {...}, "data": {...}}
-    service = action.get("action")
-    if not isinstance(service, str) or "." not in service:
-        _LOGGER.warning("Unsupported action type: %r", action)
-        return
-    domain, service_name = service.split(".", 1)
-    data = action.get("data") or {}
-    target = action.get("target")
-    await _run_service(hass, domain, service_name, data, target)
-
-
-async def _run_service(
-    hass: HomeAssistant,
-    domain: str,
-    service: str,
-    data: dict,
-    target: dict | None = None,
-) -> None:
-    """Call a service and log any failure.
-
-    The target (entity_id/device_id/...) is merged into the data dict,
-    since 2026.9.0 service schema validation requires the target keys to
-    be present in the service data itself rather than passed separately.
-    """
-    data = dict(data)
-    if target:
-        data.update(target)
+    # Deep-copy so validation never mutates the config entry options.
+    actions = deepcopy(actions)
     try:
-        await hass.services.async_call(domain, service, data, blocking=False)
+        actions = await _prepare_action_conditions(hass, actions)
     except Exception:  # noqa: BLE001
-        _LOGGER.exception("Failed to execute action %s.%s", domain, service)
+        _LOGGER.exception("Failed to validate button action conditions")
+        return
+
+    script = Script(
+        hass,
+        actions,
+        "LocalDeck button action",
+        "localdeckplus",
+        logger=_LOGGER,
+    )
+    try:
+        await script.async_run(context=Context())
+    except Exception:  # noqa: BLE001
+        _LOGGER.exception("Failed to execute button action")
+    finally:
+        # Release the script's cached conditions and remove it from the
+        # global script registry so repeated presses don't accumulate.
+        await script.async_unload()
 
 
 # ----------------------------------------------------------------------
